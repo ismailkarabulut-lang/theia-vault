@@ -156,11 +156,12 @@ class SandboxExecutor:
         if not args:
             return False, "Boş komut."
 
-        executable = Path(args[0]).name
-        if executable in _BLOCKED_EXECUTABLES:
+        executable      = Path(args[0]).name
+        executable_base = executable.split(".")[0]
+        if executable_base in _BLOCKED_EXECUTABLES:
             return False, f"Engellenen komut: {executable!r}"
 
-        if executable in ("python", "python3"):
+        if executable_base in ("python", "python3") or executable in ("python", "python3"):
             for flag in ("-c", "--command"):
                 if flag in args:
                     idx = args.index(flag)

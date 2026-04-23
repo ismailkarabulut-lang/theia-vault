@@ -2,7 +2,9 @@
 
 import pytest
 
-from gatekeeper import ClassifyResult, Risk, RiskClassifier
+import json
+
+from gatekeeper import AuditLog, ClassifyResult, Risk, RiskClassifier
 
 clf = RiskClassifier()
 
@@ -104,3 +106,46 @@ def test_classify_result_has_reason():
     assert isinstance(r, ClassifyResult)
     assert r.reason
     assert isinstance(r.risk, Risk)
+
+
+# ── AuditLog ──────────────────────────────────────────────────────────────────
+
+def test_auditlog_jsonl_format(tmp_path):
+    log = AuditLog(path=tmp_path / "audit.jsonl")
+    log.write("ls -la", Risk.LOW, "auto_run", "dosya listesi")
+
+    lines = (tmp_path / "audit.jsonl").read_text().splitlines()
+    assert len(lines) == 1
+    entry = json.loads(lines[0])
+    assert entry["cmd"] == "ls -la"
+    assert entry["risk"] == "LOW"
+    assert entry["decision"] == "auto_run"
+    assert entry["output_preview"] == "dosya listesi"
+    assert "ts" in entry
+
+
+def test_auditlog_multiple_writes_separate_lines(tmp_path):
+    log = AuditLog(path=tmp_path / "audit.jsonl")
+    log.write("ls",       Risk.LOW,      "auto_run")
+    log.write("sudo rm",  Risk.HIGH,     "rejected")
+    log.write("rm -rf /", Risk.CRITICAL, "blocked")
+
+    lines = (tmp_path / "audit.jsonl").read_text().splitlines()
+    assert len(lines) == 3
+    for line in lines:
+        entry = json.loads(line)
+        assert "cmd" in entry and "risk" in entry
+
+
+def test_auditlog_does_not_touch_legacy_json_array(tmp_path):
+    log_path = tmp_path / "audit.jsonl"
+    legacy = json.dumps([{"cmd": "eski", "risk": "LOW"}], ensure_ascii=False)
+    log_path.write_text(legacy, encoding="utf-8")
+
+    log = AuditLog(path=log_path)
+    log.write("yeni", Risk.MEDIUM, "pending")
+
+    content = log_path.read_text(encoding="utf-8")
+    assert content.startswith("[")
+    assert '"eski"' in content
+    assert '"yeni"' in content

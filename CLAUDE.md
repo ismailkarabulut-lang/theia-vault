@@ -18,18 +18,28 @@ Telegram üzerinden çalışır. Dil: Türkçe.
 
 ## Dosya Yapısı
 
-- `theia_telegram.py` — Telegram bot, ana giriş noktası
-- `theia_core.py` — LLM katmanı (GÜNCELLENECEk: Ollama → Claude API)
-- `gatekeeper.py` — Komut onay ve risk sınıflandırma sistemi
-- `theia_terminal.py` — Terminal CLI
-- `theia.db` — SQLite veritabanı (tasks tablosu)
-- `.env` — TELEGRAM_TOKEN, CHAT_ID, ANTHROPIC_API_KEY
+- `main.py` — Telegram bot, ana giriş noktası (handler kayıt + uygulama başlatma)
+- `core/config.py` — Ayarlar, Anthropic istemcisi, yetki kontrolü (`ok()`)
+- `core/db.py` — SQLite veritabanı işlemleri
+- `handlers/start.py` — /start komutu
+- `handlers/message.py` — Genel mesaj işleyici, Claude API entegrasyonu
+- `handlers/shell.py` — /cmd komutu, komut onay akışı ve callback'ler
+- `handlers/schedule.py` — /ekle, /liste, /sifirla, cron job, hatırlatma callback'leri
+- `handlers/memory.py` — /memory, /kaydet, /unut komutları
+- `handlers/media.py` — Medya komutları (yer tutucu)
+- `gatekeeper.py` — Risk sınıflandırma, SandboxExecutor, denetim logu
+- `memory/memory_manager.py` — Kullanıcı başına kalıcı hafıza sistemi
+- `test_gatekeeper.py` — RiskClassifier birim testleri
+- `test_sandbox.py` — SandboxExecutor birim testleri
+- `requirements.txt` — Bağımlılıklar
+- `theia.db` — SQLite veritabanı (items, checks, conversations tabloları)
+- `.env` — TELEGRAM_TOKEN, CHAT_ID, USER_ID, ANTHROPIC_API_KEY
 
 ## Çalıştırma
 
 ```bash
 cd ~/theia
-python3 theia_telegram.py   # Telegram bot
+python3 main.py             # Telegram bot
 python3 gatekeeper.py       # Komut onay sistemi
 python3 gatekeeper.py --dry-run  # Test modu
 ```
@@ -45,15 +55,15 @@ python3 gatekeeper.py --dry-run  # Test modu
 - Gereksiz bağımlılık ekleme
 - Tek dosyayı düzenle, tüm projeyi yeniden yazma
 
-## Mimari Hedef (Geçiş Süreci)
+## Mimari
 
-theia_core.py şu an Ollama'ya bağlı (localhost:11434, llama3.2).
-Hedef: Anthropic Claude API'ye geçiş.
-Geçiş tamamlanana kadar mevcut kodu koru, paralel çalıştırma yapma.
+Claude API geçişi tamamlandı. `handlers/message.py` claude-sonnet-4-5 kullanıyor.
+`memory/memory_manager.py` claude-haiku-4-5 kullanıyor (hafıza özeti için).
+Ollama bağımlılığı tamamen kaldırıldı.
 
 ## Test
 
 ```bash
-python3 -c "from theia_core import ask_theia; print(ask_theia('Merhaba'))"
+python3 -m pytest test_gatekeeper.py test_sandbox.py -v
 python3 gatekeeper.py --dry-run
 ```

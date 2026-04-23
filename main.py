@@ -184,7 +184,15 @@ def fmt_item(r) -> str:
 
 def ok(update: Update) -> bool:
     user = update.effective_user
-    return user is not None and user.id == USER_ID
+    if user is None or user.id != USER_ID:
+        if user is not None:
+            log.warning(
+                "Yetkisiz erişim girişimi: user_id=%s username=%s",
+                user.id,
+                user.username or "?",
+            )
+        return False
+    return True
 
 
 # ── /start ────────────────────────────────────────────────────────────────────
@@ -211,12 +219,16 @@ async def ekle_start(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> int:
 async def got_type(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> int:
     q = update.callback_query
     await q.answer()
+    if not ok(update):
+        return ConversationHandler.END
     ctx.user_data["type"] = q.data[2:]
     await q.edit_message_text("İçerik nedir?")
     return ASK_CONTENT
 
 
 async def got_content(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> int:
+    if not ok(update):
+        return ConversationHandler.END
     ctx.user_data["content"] = update.message.text
     await update.message.reply_text(
         "Ne zaman? (örn: `14:30` veya `23.04 14:30` veya `23.04.2026 14:30`)",
@@ -226,6 +238,8 @@ async def got_content(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> int:
 
 
 async def got_time(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> int:
+    if not ok(update):
+        return ConversationHandler.END
     dt = parse_time(update.message.text)
     if not dt:
         await update.message.reply_text(
@@ -249,6 +263,8 @@ async def got_time(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> int:
 async def got_recurrence(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> int:
     q = update.callback_query
     await q.answer()
+    if not ok(update):
+        return ConversationHandler.END
     rtype = q.data[2:]
 
     if rtype == "daily":
@@ -268,6 +284,8 @@ async def got_recurrence(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> int:
 
 
 async def got_recurrence_detail(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> int:
+    if not ok(update):
+        return ConversationHandler.END
     text = update.message.text.strip()
     rtype = ctx.user_data.get("recurrence_type", "")
 
@@ -317,6 +335,8 @@ async def _ask_check(msg_or_query) -> int:
 async def got_check(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> int:
     q = update.callback_query
     await q.answer()
+    if not ok(update):
+        return ConversationHandler.END
     check_after = int(q.data[2:])
     d = ctx.user_data
     dt: datetime = d["scheduled_time"]
@@ -338,6 +358,8 @@ async def got_check(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> int:
 
 
 async def ekle_cancel(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> int:
+    if not ok(update):
+        return ConversationHandler.END
     ctx.user_data.clear()
     await update.message.reply_text("İptal edildi.")
     return ConversationHandler.END
@@ -429,6 +451,8 @@ async def minute_job(ctx: ContextTypes.DEFAULT_TYPE) -> None:
 async def cb_done(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
     q = update.callback_query
     await q.answer()
+    if not ok(update):
+        return
     iid = int(q.data.split(":")[1])
     with db() as c:
         row = c.execute("SELECT recurrence FROM items WHERE id=?", (iid,)).fetchone()
@@ -440,6 +464,8 @@ async def cb_done(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
 async def cb_cancel(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
     q = update.callback_query
     await q.answer()
+    if not ok(update):
+        return
     iid = int(q.data.split(":")[1])
     with db() as c:
         c.execute("UPDATE items SET status='cancelled' WHERE id=?", (iid,))
@@ -449,6 +475,8 @@ async def cb_cancel(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
 async def cb_ertele(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
     q = update.callback_query
     await q.answer()
+    if not ok(update):
+        return
     iid = q.data.split(":")[1]
     kb = [[
         InlineKeyboardButton("15 dk",  callback_data=f"d:15:{iid}"),
@@ -462,6 +490,8 @@ async def cb_ertele(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
 async def cb_delay(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
     q = update.callback_query
     await q.answer()
+    if not ok(update):
+        return
     _, mins_s, iid_s = q.data.split(":")
     mins = int(mins_s)
     iid  = int(iid_s)
@@ -538,6 +568,8 @@ async def cmd_handler(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
 async def cb_cmd_ok(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
     q = update.callback_query
     await q.answer()
+    if not ok(update):
+        return
     uid = q.data.split(":")[1]
     pending = _pending.get(uid)
     if not pending:
@@ -567,6 +599,8 @@ async def cb_cmd_ok(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
 async def cb_cmd_ok2(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
     q = update.callback_query
     await q.answer()
+    if not ok(update):
+        return
     uid = q.data.split(":")[1]
     pending = _pending.pop(uid, None)
     if not pending:
@@ -578,6 +612,8 @@ async def cb_cmd_ok2(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
 async def cb_cmd_no(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
     q = update.callback_query
     await q.answer()
+    if not ok(update):
+        return
     uid = q.data.split(":")[1]
     pending = _pending.pop(uid, None)
     if pending:

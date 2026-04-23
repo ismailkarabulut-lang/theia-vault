@@ -1,0 +1,6 @@
+memory/users/*.md
+__pycache__/
+*.pyc
+.env
+theia.db
+gatekeeper_log.json

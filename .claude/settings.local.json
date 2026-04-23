@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -m py_compile main.py)",
+      "Bash(python3 -m py_compile /home/ismail/theia/main.py)",
+      "Bash(python3 -m py_compile gatekeeper.py)",
+      "Bash(python3 -c ' *)",
+      "Bash(python3 *)",
+      "Bash(git *)"
+    ]
+  }
+}

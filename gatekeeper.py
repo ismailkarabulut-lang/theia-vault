@@ -204,11 +204,10 @@ class AuditLog:
             "decision":       decision,
             "output_preview": output[:200],
         }
-        records: list = []
-        if self.path.exists():
-            try:
-                records = json.loads(self.path.read_text())
-            except (json.JSONDecodeError, OSError):
-                records = []
-        records.append(entry)
-        self.path.write_text(json.dumps(records, ensure_ascii=False, indent=2))
+        try:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            with self.path.open("a", encoding="utf-8") as f:
+                f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+        except OSError as e:
+            import logging
+            logging.getLogger(__name__).warning("AuditLog yazılamadı: %s", e)

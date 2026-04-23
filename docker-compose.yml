@@ -1,0 +1,22 @@
+version: "3.9"
+
+services:
+  # Opsiyonel sandbox konteyneri — SandboxExecutor'ı izole ortamda çalıştırır.
+  # Kullanım: docker compose run --rm sandbox "ls -la"
+  sandbox:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: theia-sandbox:latest
+    restart: "no"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 128m
+    cpus: "0.5"
+    network_mode: none
+    volumes:
+      - /tmp/sandbox:/workspace:rw
+    working_dir: /workspace

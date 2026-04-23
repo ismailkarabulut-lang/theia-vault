@@ -427,8 +427,8 @@ async def minute_job(ctx: ContextTypes.DEFAULT_TYPE) -> None:
             await ctx.bot.send_message(
                 CHAT_ID, f"🔔 {TYPE_LABEL.get(item['type'], item['type'])}: {item['content']}"
             )
-        except Exception as e:
-            log.error("Hatırlatma gönderilemedi: %s", e)
+        except Exception:
+            log.exception("Hatırlatma gönderilemedi: item_id=%s", item["id"])
 
     for chk in due_checks:
         iid = chk["item_id"]
@@ -443,8 +443,8 @@ async def minute_job(ctx: ContextTypes.DEFAULT_TYPE) -> None:
                 f"🔍 Tamamlandı mı?\n{TYPE_LABEL.get(chk['type'], chk['type'])}: {chk['content']}",
                 reply_markup=InlineKeyboardMarkup(kb),
             )
-        except Exception as e:
-            log.error("Kontrol mesajı gönderilemedi: %s", e)
+        except Exception:
+            log.exception("Kontrol mesajı gönderilemedi: item_id=%s", chk["item_id"])
 
 
 # ── Post-reminder callbacks ───────────────────────────────────────────────────
@@ -833,8 +833,17 @@ async def handle_message(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> Non
 
         # Arka planda memory güncelle — kullanıcıyı beklетme
         asyncio.create_task(_update_memory_bg(user_id, get_history(user_id)))
-    except Exception as e:
-        log.error("Claude hatası: %s", e)
+    except anthropic.RateLimitError:
+        log.warning("Claude rate limit aşıldı: user_id=%s", user_id)
+        await update.message.reply_text("Şu an yoğunluk var, biraz sonra tekrar deneyin.")
+    except anthropic.APIStatusError as e:
+        log.error("Claude API hatası: status=%s user_id=%s", e.status_code, user_id)
+        await update.message.reply_text("Bir hata oluştu, tekrar deneyin.")
+    except anthropic.APIConnectionError:
+        log.error("Claude API bağlantı hatası: user_id=%s", user_id)
+        await update.message.reply_text("Bağlantı hatası, tekrar deneyin.")
+    except Exception:
+        log.exception("Beklenmeyen hata (handle_message): user_id=%s", user_id)
         await update.message.reply_text("Bir hata oluştu, tekrar deneyin.")
 
 

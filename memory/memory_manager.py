@@ -4,6 +4,8 @@ import asyncio
 import logging
 from pathlib import Path
 
+import anthropic
+
 logger = logging.getLogger("memory")
 
 MEMORY_DIR = Path(__file__).parent / "users"
@@ -51,8 +53,8 @@ class MemoryManager:
         try:
             p = self._path(user_id)
             return p.read_text(encoding="utf-8") if p.exists() else ""
-        except Exception as e:
-            logger.warning("Memory operation failed for user %s: %s", user_id, e)
+        except OSError as e:
+            logger.warning("Memory dosyası okunamadı user=%s: %s", user_id, e)
             return ""
 
     def save_memory(self, user_id: int, content: str) -> bool:
@@ -60,8 +62,8 @@ class MemoryManager:
             MEMORY_DIR.mkdir(parents=True, exist_ok=True)
             self._path(user_id).write_text(content.strip(), encoding="utf-8")
             return True
-        except Exception as e:
-            logger.warning("Memory operation failed for user %s: %s", user_id, e)
+        except OSError as e:
+            logger.warning("Memory dosyasına yazılamadı user=%s: %s", user_id, e)
             return False
 
     def should_update_memory(self, user_id: int, conversation_history: list) -> bool:
@@ -94,8 +96,14 @@ class MemoryManager:
             result = resp.content[0].text.strip()
             self._mark_updated(user_id, len(conversation_history))
             return None if result == "NO_UPDATE" else result
-        except Exception as e:
-            logger.warning("Memory operation failed for user %s: %s", user_id, e)
+        except (anthropic.APIError, anthropic.APIConnectionError, anthropic.RateLimitError) as e:
+            logger.warning("Claude API hatası (extract_memory) user=%s: %s", user_id, e)
+            return None
+        except OSError as e:
+            logger.warning("Dosya hatası (extract_memory) user=%s: %s", user_id, e)
+            return None
+        except Exception:
+            logger.exception("Beklenmeyen hata (extract_memory) user=%s", user_id)
             return None
 
     async def manual_save(
@@ -119,8 +127,14 @@ class MemoryManager:
             new_mem = resp.content[0].text.strip()
             self.save_memory(user_id, new_mem)
             return "✓ Kaydedildi."
-        except Exception as e:
-            logger.warning("Memory operation failed for user %s: %s", user_id, e)
+        except (anthropic.APIError, anthropic.APIConnectionError, anthropic.RateLimitError) as e:
+            logger.warning("Claude API hatası (manual_save) user=%s: %s", user_id, e)
+            return "Kaydetme sırasında hata oluştu."
+        except OSError as e:
+            logger.warning("Dosya hatası (manual_save) user=%s: %s", user_id, e)
+            return "Kaydetme sırasında hata oluştu."
+        except Exception:
+            logger.exception("Beklenmeyen hata (manual_save) user=%s", user_id)
             return "Kaydetme sırasında hata oluştu."
 
     async def manual_forget(
@@ -149,6 +163,12 @@ class MemoryManager:
                 return "İlgili bilgiyi bulamadım."
             self.save_memory(user_id, result)
             return "✓ Silindi."
-        except Exception as e:
-            logger.warning("Memory operation failed for user %s: %s", user_id, e)
+        except (anthropic.APIError, anthropic.APIConnectionError, anthropic.RateLimitError) as e:
+            logger.warning("Claude API hatası (manual_forget) user=%s: %s", user_id, e)
+            return "Silme sırasında hata oluştu."
+        except OSError as e:
+            logger.warning("Dosya hatası (manual_forget) user=%s: %s", user_id, e)
+            return "Silme sırasında hata oluştu."
+        except Exception:
+            logger.exception("Beklenmeyen hata (manual_forget) user=%s", user_id)
             return "Silme sırasında hata oluştu."

@@ -1,5 +1,6 @@
 """THEIA Gatekeeper — risk sınıflandırma, sandbox yürütme, denetim logu."""
 
+import ast
 import json
 import re
 import shlex
@@ -102,17 +103,72 @@ class RiskClassifier:
         return ClassifyResult(Risk.MEDIUM, "Bilinmeyen komut — ihtiyatlı yaklaşım")
 
 
+_BLOCKED_EXECUTABLES = frozenset({
+    "rm", "dd", "mkfs", "shred", "chmod", "chown",
+    "kill", "reboot", "shutdown", "systemctl",
+})
+
+_BLOCKED_PYTHON_MODULES = frozenset({
+    "os", "subprocess", "shutil", "sys", "socket", "ctypes",
+    "importlib", "builtins", "signal",
+})
+
+_BLOCKED_PYTHON_BUILTINS = frozenset({"eval", "exec", "__import__", "compile"})
+
+
+def _check_python_ast(code: str) -> tuple[bool, str]:
+    """Python kod stringini ast ile analiz eder, tehlikeli yapıları engeller."""
+    try:
+        tree = ast.parse(code)
+    except SyntaxError:
+        return True, ""
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                root = alias.name.split(".")[0]
+                if root in _BLOCKED_PYTHON_MODULES:
+                    return False, f"Tehlikeli import: {alias.name}"
+        elif isinstance(node, ast.ImportFrom):
+            root = (node.module or "").split(".")[0]
+            if root in _BLOCKED_PYTHON_MODULES:
+                return False, f"Tehlikeli import: {node.module}"
+        elif isinstance(node, ast.Call):
+            name = None
+            if isinstance(node.func, ast.Name):
+                name = node.func.id
+            elif isinstance(node.func, ast.Attribute):
+                name = node.func.attr
+            if name in _BLOCKED_PYTHON_BUILTINS:
+                return False, f"Tehlikeli fonksiyon: {name}()"
+    return True, ""
+
+
 class SandboxExecutor:
-    TIMEOUT = 30
+    TIMEOUT = 10
 
     def run(self, cmd: str) -> tuple[bool, str]:
-        """shell=False, timeout=30s. Pipe/yönlendirme desteklenmez."""
+        """shell=False, timeout=10s. Pipe/yönlendirme desteklenmez."""
         try:
             args = shlex.split(cmd)
         except ValueError as e:
             return False, f"Parse hatası: {e}"
         if not args:
             return False, "Boş komut."
+
+        executable = Path(args[0]).name
+        if executable in _BLOCKED_EXECUTABLES:
+            return False, f"Engellenen komut: {executable!r}"
+
+        if executable in ("python", "python3"):
+            for flag in ("-c", "--command"):
+                if flag in args:
+                    idx = args.index(flag)
+                    if idx + 1 < len(args):
+                        safe, reason = _check_python_ast(args[idx + 1])
+                        if not safe:
+                            return False, f"Tehlikeli Python kodu tespit edildi: {reason}"
+
         try:
             result = subprocess.run(
                 args,

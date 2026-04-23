@@ -54,10 +54,15 @@ def record_chunk(stream: pyaudio.Stream, seconds: float) -> bytes:
 
 
 def transcribe(audio_bytes: bytes) -> str:
-    """Ham int16 PCM → Türkçe metin (faster-whisper)."""
+    """Ham int16 PCM → Türkçe metin (faster-whisper).
+    vad_filter sessiz bölümleri Whisper'a göndermez; no_speech_prob halüsinasyonları atar."""
     audio_f32 = np.frombuffer(audio_bytes, dtype=np.int16).astype(np.float32) / 32768.0
-    segments, _ = _whisper.transcribe(audio_f32, language="tr", beam_size=5)
-    return " ".join(s.text for s in segments).strip()
+    segments, _ = _whisper.transcribe(
+        audio_f32, language="tr", beam_size=5,
+        vad_filter=True,
+        vad_parameters={"threshold": 0.5},
+    )
+    return " ".join(s.text for s in segments if s.no_speech_prob < 0.5).strip()
 
 
 def contains_wake_word(text: str) -> bool:
@@ -105,7 +110,7 @@ def calibrate(stream: pyaudio.Stream) -> int:
     n = int(SAMPLE_RATE / CHUNK_SIZE * CALIBRATE_SECS)
     levels = [rms(stream.read(CHUNK_SIZE, exception_on_overflow=False)) for _ in range(n)]
     ambient = int(np.median(levels))
-    threshold = max(int(ambient * THRESHOLD_MULT), 300)
+    threshold = max(int(ambient * THRESHOLD_MULT), 800)
     print(f"[Kalibrasyon] Ortam: {ambient} RMS → Eşik: {threshold}")
     return threshold
 

@@ -20,8 +20,10 @@ SAMPLE_RATE = 16000
 CHANNELS    = 1
 FORMAT      = pyaudio.paInt16
 CHUNK_SIZE  = 1024
-LISTEN_SECS = 2    # wake word taraması için chunk süresi
-RECORD_SECS = 5    # wake word sonrası komut kaydı süresi
+LISTEN_SECS        = 2    # wake word taraması için chunk süresi
+RECORD_SECS        = 5    # wake word sonrası komut kaydı süresi
+RMS_THRESHOLD      = 500  # bu değerin altı sessizlik sayılır
+CONSECUTIVE_CHUNKS = 3    # Whisper'a göndermek için gereken ardışık aktif chunk
 
 SYSTEM_PROMPT = (
     "Sen Theia'sın, Kaptan İsmail'in kişisel asistanısın. "
@@ -51,6 +53,17 @@ def transcribe(audio_bytes: bytes) -> str:
     audio_f32 = np.frombuffer(audio_bytes, dtype=np.int16).astype(np.float32) / 32768.0
     segments, _ = _whisper.transcribe(audio_f32, language="tr", beam_size=5)
     return " ".join(s.text for s in segments).strip()
+
+
+def is_hallucination(text: str) -> bool:
+    """Whisper halüsinasyonlarını filtreler."""
+    if not text:
+        return True
+    words = text.split()
+    # "theia" yoksa ve 2 kelimeden uzunsa büyük ihtimalle halüsinasyon
+    if len(words) > 2 and WAKE_WORD.lower() not in text.lower():
+        return True
+    return False
 
 
 def speak(text: str) -> None:
@@ -98,10 +111,31 @@ def main() -> None:
     print("Dinliyorum... (Ctrl+C ile çıkış)")
 
     try:
+        active_count:  int        = 0
+        active_chunks: list[bytes] = []
+
         while True:
-            chunk = record_chunk(stream, LISTEN_SECS)
-            text  = transcribe(chunk)
-            if not text:
+            raw = stream.read(CHUNK_SIZE, exception_on_overflow=False)
+            rms = int(np.sqrt(np.mean(np.frombuffer(raw, dtype=np.int16).astype(np.float32) ** 2)))
+
+            if rms > RMS_THRESHOLD:
+                active_count += 1
+                active_chunks.append(raw)
+            else:
+                active_count = 0
+                active_chunks.clear()
+                continue
+
+            if active_count < CONSECUTIVE_CHUNKS:
+                continue
+
+            audio_data = b"".join(active_chunks)
+            active_count = 0
+            active_chunks.clear()
+
+            text = transcribe(audio_data)
+
+            if is_hallucination(text):
                 continue
 
             if WAKE_WORD.lower() in text.lower():

@@ -145,10 +145,14 @@ def _check_python_ast(code: str) -> tuple[bool, str]:
 
 
 class SandboxExecutor:
-    TIMEOUT = 10
+    TIMEOUT        = 10
+    DOCKER_TIMEOUT = 30  # container başlatma süresi eklendiğinden daha uzun
+
+    def __init__(self, use_docker: bool = False) -> None:
+        self.use_docker = use_docker
 
     def run(self, cmd: str) -> tuple[bool, str]:
-        """shell=False, timeout=10s. Pipe/yönlendirme desteklenmez."""
+        """shell=False. Host modda 10s, Docker modda 30s timeout."""
         try:
             args = shlex.split(cmd)
         except ValueError as e:
@@ -158,9 +162,13 @@ class SandboxExecutor:
 
         executable      = Path(args[0]).name
         executable_base = executable.split(".")[0]
-        if executable_base in _BLOCKED_EXECUTABLES:
+
+        # Blocklist yalnızca host modda uygulanır;
+        # Docker modda container zaten izole, host'u koruma gerekmez.
+        if not self.use_docker and executable_base in _BLOCKED_EXECUTABLES:
             return False, f"Engellenen komut: {executable!r}"
 
+        # AST kontrolü her iki modda da çalışır.
         if executable_base in ("python", "python3") or executable in ("python", "python3"):
             for flag in ("-c", "--command"):
                 if flag in args:
@@ -170,12 +178,19 @@ class SandboxExecutor:
                         if not safe:
                             return False, f"Tehlikeli Python kodu tespit edildi: {reason}"
 
+        run_args = (
+            ["docker", "compose", "run", "--rm", "sandbox"] + args
+            if self.use_docker
+            else args
+        )
+        timeout = self.DOCKER_TIMEOUT if self.use_docker else self.TIMEOUT
+
         try:
             result = subprocess.run(
-                args,
+                run_args,
                 capture_output=True,
                 text=True,
-                timeout=self.TIMEOUT,
+                timeout=timeout,
                 shell=False,
             )
             out = result.stdout
@@ -183,9 +198,9 @@ class SandboxExecutor:
                 out += f"\n[stderr]\n{result.stderr}"
             return result.returncode == 0, out.strip() or "(çıktı yok)"
         except FileNotFoundError:
-            return False, f"Komut bulunamadı: {args[0]!r}"
+            return False, f"Komut bulunamadı: {run_args[0]!r}"
         except subprocess.TimeoutExpired:
-            return False, f"Zaman aşımı ({self.TIMEOUT}s)"
+            return False, f"Zaman aşımı ({timeout}s)"
         except PermissionError:
             return False, "İzin reddedildi."
         except Exception as e:

@@ -1,5 +1,7 @@
 """SandboxExecutor birim testleri — güvenli ve tehlikeli komut senaryoları."""
 
+import shutil
+
 import pytest
 
 from gatekeeper import SandboxExecutor
@@ -100,3 +102,28 @@ def test_malformed_quotes():
     ok, out = sx.run("echo 'unclosed")
     assert not ok
     assert "parse" in out.lower() or "hata" in out.lower()
+
+
+# ── Docker smoke test ─────────────────────────────────────────────────────────
+
+def _docker_compose_available() -> bool:
+    """docker compose (v2) subcommand'ının çalışıp çalışmadığını kontrol eder."""
+    if shutil.which("docker") is None:
+        return False
+    import subprocess as _sp
+    try:
+        r = _sp.run(["docker", "compose", "version"], capture_output=True, timeout=5)
+        return r.returncode == 0
+    except Exception:
+        return False
+
+
+_docker_available = _docker_compose_available()
+
+
+@pytest.mark.skipif(not _docker_available, reason="docker compose (v2) kurulu değil")
+def test_docker_sandbox_echo():
+    sx_docker = SandboxExecutor(use_docker=True)
+    ok, out = sx_docker.run("echo docker-sandbox")
+    assert ok, f"Docker sandbox echo başarısız — çıktı: {out}"
+    assert "docker-sandbox" in out

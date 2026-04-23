@@ -64,3 +64,27 @@ def test_resolve_pending_sets_resolved_at():
             "SELECT resolved_at FROM pending_actions WHERE id = ?", (action_id,)
         ).fetchone()
     assert row["resolved_at"] is not None
+
+
+# ── Niyet tespiti testleri ────────────────────────────────────────────────────
+
+def test_intent_regex_matches_and_add_pending_called(monkeypatch):
+    from handlers import message as msg_mod
+
+    calls = []
+    monkeypatch.setattr(msg_mod, "add_pending", lambda uid, txt: calls.append((uid, txt)) or 1)
+
+    assert msg_mod._INTENT_RE.search("buna yarın bakacağım")
+    msg_mod.add_pending(42, "buna yarın bakacağım")
+    assert len(calls) == 1
+    assert calls[0] == (42, "buna yarın bakacağım")
+
+
+def test_no_intent_add_pending_not_called(monkeypatch):
+    from handlers import message as msg_mod
+
+    calls = []
+    monkeypatch.setattr(msg_mod, "add_pending", lambda uid, txt: calls.append((uid, txt)) or 1)
+
+    assert not msg_mod._INTENT_RE.search("bugün hava nasıl?")
+    assert len(calls) == 0

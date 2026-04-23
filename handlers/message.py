@@ -10,6 +10,7 @@ from telegram.ext import ContextTypes
 
 from core.config import SYSTEM, SYSTEM_WEB, WEB_TOOLS, claude, ok
 from core.db import get_history, save_message
+from core.pending import add_pending
 from handlers.memory import _mem_view, memory_manager
 
 log = logging.getLogger(__name__)
@@ -18,6 +19,17 @@ _SEARCH_RE     = re.compile(r"\b(ara|bul|güncel|hava)\b|\bkur(?!ul|ban)", re.IG
 _MEM_SAVE_RE   = re.compile(r"bunu hatırla|bunu kaydet|önemli:", re.IGNORECASE)
 _MEM_FORGET_RE = re.compile(r"bunu unut|bunu sil memory'den", re.IGNORECASE)
 _MEM_VIEW_RE   = re.compile(r"ne hatırlıyorsun", re.IGNORECASE)
+_INTENT_RE     = re.compile(
+    r"\b(bakacağım|bakarım|bakayım"
+    r"|yapacağım|yaparım|yapayım"
+    r"|deneyeceğim|denerim|deneyeyim"
+    r"|hallederim|halledeceğim"
+    r"|araştıracağım|araştırırım"
+    r"|düşüneceğim|düşüneyim"
+    r"|ekleyeceğim|eklerim"
+    r"|yazacağım|yazarım)\b",
+    re.IGNORECASE,
+)
 
 
 def _build_system(user_memory: str, web: bool) -> str:
@@ -55,6 +67,9 @@ async def handle_message(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> Non
     if _MEM_VIEW_RE.search(text):
         await _mem_view(update, user_id)
         return
+
+    if _INTENT_RE.search(text):
+        add_pending(user_id, text)
 
     save_message(user_id, "user", text)
     history    = get_history(user_id)

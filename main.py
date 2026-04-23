@@ -13,6 +13,7 @@ from telegram.ext import (
 
 from core.config import TOKEN, VAULT_DIR, log
 from core.db import init_db
+from core.pending import init_pending_table
 from handlers.memory import mem_forget_cmd, mem_save_cmd, mem_view_cmd
 from handlers.message import handle_message
 from handlers.schedule import (
@@ -31,6 +32,7 @@ from handlers.start import start
 
 def main() -> None:
     init_db()
+    init_pending_table()
     VAULT_DIR.mkdir(parents=True, exist_ok=True)
 
     app = Application.builder().token(TOKEN).build()

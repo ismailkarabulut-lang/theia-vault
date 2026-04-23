@@ -17,6 +17,7 @@ from telegram.ext import (
 
 from core.config import CHAT_ID, VAULT_DIR, ok
 from core.db import db, get_full_history
+from core.pending import get_all_open_pendings, resolve_pending
 import os
 
 log = logging.getLogger(__name__)
@@ -477,6 +478,41 @@ async def minute_job(ctx: ContextTypes.DEFAULT_TYPE) -> None:
             )
         except Exception:
             log.exception("Kontrol mesajı gönderilemedi: item_id=%s", chk["item_id"])
+
+
+# ── Haftalık özet job ─────────────────────────────────────────────────────────
+
+async def weekly_summary_job(ctx: ContextTypes.DEFAULT_TYPE) -> None:
+    pendings = get_all_open_pendings()
+    if not pendings:
+        return
+
+    by_user: dict[int, list[dict]] = {}
+    for p in pendings:
+        by_user.setdefault(p["user_id"], []).append(p)
+
+    for user_id, items in by_user.items():
+        lines = ["📋 Haftalık hatırlatma", "Şu işler hâlâ bekliyor:"]
+        for item in items:
+            lines.append(f"• [{item['created_at']}] — {item['text']}")
+        lines.append("\nKapatmak için: /tamam <id>")
+        try:
+            await ctx.bot.send_message(user_id, "\n".join(lines))
+        except Exception:
+            log.exception("Haftalık özet gönderilemedi: user_id=%s", user_id)
+
+
+# ── /tamam ────────────────────────────────────────────────────────────────────
+
+async def tamam_cmd(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
+    if not ok(update):
+        return
+    parts = (update.message.text or "").split(None, 1)
+    if len(parts) < 2 or not parts[1].strip().isdigit():
+        await update.message.reply_text("Kullanım: `/tamam <id>`", parse_mode="Markdown")
+        return
+    resolve_pending(int(parts[1].strip()))
+    await update.message.reply_text("✅ Kapatıldı.")
 
 
 # ── ConversationHandler ────────────────────────────────────────────────────────

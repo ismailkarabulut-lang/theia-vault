@@ -88,3 +88,23 @@ def test_no_intent_add_pending_not_called(monkeypatch):
 
     assert not msg_mod._INTENT_RE.search("bugün hava nasıl?")
     assert len(calls) == 0
+
+
+# ── weekly_summary_job testi ──────────────────────────────────────────────────
+
+def test_weekly_summary_job_sends_message_for_open_pending():
+    import asyncio
+    from unittest.mock import AsyncMock, MagicMock
+    from handlers.schedule import weekly_summary_job
+
+    add_pending(user_id=42, text="Raporu yaz")
+
+    sent = []
+    ctx = MagicMock()
+    ctx.bot.send_message = AsyncMock(side_effect=lambda uid, text: sent.append((uid, text)))
+
+    asyncio.run(weekly_summary_job(ctx))
+
+    assert len(sent) == 1
+    assert sent[0][0] == 42
+    assert "Raporu yaz" in sent[0][1]

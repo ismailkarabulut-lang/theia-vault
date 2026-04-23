@@ -2,6 +2,7 @@
 """THEIA — Kaptan İsmail'in kişisel AI asistanı."""
 
 import logging
+from datetime import time as dtime, timezone
 
 from telegram.ext import (
     Application,
@@ -25,6 +26,8 @@ from handlers.schedule import (
     liste,
     minute_job,
     sifirla,
+    tamam_cmd,
+    weekly_summary_job,
 )
 from handlers.shell import cb_cmd_no, cb_cmd_ok, cb_cmd_ok2, cmd_handler
 from handlers.start import start
@@ -55,9 +58,15 @@ def main() -> None:
     app.add_handler(CallbackQueryHandler(cb_cmd_ok,  pattern=r"^cmd_ok:[0-9a-f]+$"))
     app.add_handler(CallbackQueryHandler(cb_cmd_ok2, pattern=r"^cmd_ok2:[0-9a-f]+$"))
     app.add_handler(CallbackQueryHandler(cb_cmd_no,  pattern=r"^cmd_no:[0-9a-f]+$"))
+    app.add_handler(CommandHandler("tamam",   tamam_cmd))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
     app.job_queue.run_repeating(minute_job, interval=60, first=5)
+    app.job_queue.run_daily(
+        weekly_summary_job,
+        time=dtime(6, 0, 0, tzinfo=timezone.utc),  # 09:00 UTC+3
+        days=(0,),                                   # 0 = Pazartesi
+    )
 
     log.info("THEIA başlatıldı.")
     app.run_polling(drop_pending_updates=True)

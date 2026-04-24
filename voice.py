@@ -40,7 +40,7 @@ def speak(text: str) -> None:
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
     )
     aplay = subprocess.Popen(
-        ["aplay", "-r", "22050", "-f", "S16_LE", "-c", "1", "-q"],
+        ["aplay", "-D", "plughw:0,0", "-r", "22050", "-f", "S16_LE", "-c", "1", "-q"],
         stdin=piper.stdout, stderr=subprocess.DEVNULL,
     )
     piper.stdin.write(text.encode("utf-8"))

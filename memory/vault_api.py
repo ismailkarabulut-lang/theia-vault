@@ -92,9 +92,21 @@ def _sync_soft_delete(entry_id: str, actor: str) -> bool:
     return bool(affected)
 
 
+def _fts5_query(query: str) -> str | None:
+    """
+    Kullanıcı metnini FTS5-safe sorguya dönüştürür.
+    Her kelimeyi tırnakla sarar: "kelime1" "kelime2"
+    Noktalama, ?, !, vb. FTS5 operatörlerini dışarıda bırakır.
+    """
+    import re
+    words = re.findall(r"\w+", query)  # Unicode \w — Türkçe harfler dahil
+    if not words:
+        return None
+    return " ".join(f'"{w}"' for w in words)
+
+
 def _sync_search_entries(query: str, limit: int) -> list[dict]:
-    # FTS5 özel karakterleri temizle — bozuk query yerine boş döner
-    safe_query = query.replace('"', '""').strip()
+    safe_query = _fts5_query(query)
     if not safe_query:
         return []
     with db() as c:

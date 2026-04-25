@@ -33,8 +33,12 @@ function playMedia(filename) {
 
 function renderMarkdown(text) {
   return text
+    .replace(/^---$/gm, '<hr>')
+    .replace(/^## (.+)$/gm, '<br><strong>$1</strong><br>')
+    .replace(/^### (.+)$/gm, '<em>$1</em><br>')
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/^- /gm, '• ');
+    .replace(/^- /gm, '• ')
+    .replace(/\n/g, '<br>');
 }
 
 function addMessage(role, text) {

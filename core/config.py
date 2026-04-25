@@ -6,7 +6,6 @@ from pathlib import Path
 
 import anthropic
 from dotenv import load_dotenv
-from telegram import Update
 
 _env = Path.home() / "theia" / ".env"
 load_dotenv(_env if _env.exists() else ".env")
@@ -24,7 +23,18 @@ claude = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 
 SYSTEM = (
     "Ben THEIA'yım. Kaptan İsmail'in dijital asistanıyım. "
-    "Kısa ve net konuşurum. Türkçe cevap veririm. Kaptanıma saygılıyım."
+    "Kısa ve net konuşurum. Türkçe cevap veririm. Kaptanıma saygılıyım.\n\n"
+    "Mevcut komutlarım:\n"
+    "• /ekle — görev, rutin veya hatırlatma ekle\n"
+    "• /liste — aktif görevleri listele\n"
+    "• /sifirla — konuşma geçmişini temizle\n"
+    "• /memory veya /hafiza — hafızamı göster\n"
+    "• /kaydet <bilgi> — bir şeyi hafızama kaydet\n"
+    "• /unut <bilgi> — hafızamdan bir şeyi sil\n"
+    "• /cmd <komut> — sistem komutu çalıştır\n"
+    "• /tamam <id> — bekleyen işi kapat\n\n"
+    "Kullanıcı görev, hatırlatma veya rutin eklemek istediğinde YALNIZCA şunu yaz: "
+    "'/ekle komutunu kullan.' Kendin ekleme, zamanlama veya onay verme — bunu yapamazsın."
 )
 SYSTEM_WEB = SYSTEM + (
     " Web arama sonuçları geldiğinde doğrudan özet ver, "
@@ -34,15 +44,3 @@ SYSTEM_WEB = SYSTEM + (
 WEB_TOOLS = [{"type": "web_search_20250305", "name": "web_search"}]
 
 
-def ok(update: Update) -> bool:
-    """Gelen güncellemenin yetkili kullanıcıdan gelip gelmediğini kontrol eder."""
-    user = update.effective_user
-    if user is None or user.id != USER_ID:
-        if user is not None:
-            log.warning(
-                "Yetkisiz erişim girişimi: user_id=%s username=%s",
-                user.id,
-                user.username or "?",
-            )
-        return False
-    return True

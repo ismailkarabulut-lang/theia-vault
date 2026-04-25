@@ -6,7 +6,6 @@ from typing import Any
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
-from core.config import ok
 from gatekeeper import AuditLog, Risk, RiskClassifier, SandboxExecutor
 
 _classifier = RiskClassifier()
@@ -29,8 +28,6 @@ async def _run_and_reply(q, command: str, risk: Risk) -> None:
 
 
 async def cmd_handler(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
-    if not ok(update):
-        return
     parts = (update.message.text or "").split(None, 1)
     if len(parts) < 2 or not parts[1].strip():
         await update.message.reply_text("Kullanım: `/cmd <komut>`", parse_mode="Markdown")
@@ -77,8 +74,6 @@ async def cmd_handler(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
 async def cb_cmd_ok(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
     q = update.callback_query
     await q.answer()
-    if not ok(update):
-        return
     uid = q.data.split(":")[1]
     pending = _pending.get(uid)
     if not pending:
@@ -108,8 +103,6 @@ async def cb_cmd_ok(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
 async def cb_cmd_ok2(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
     q = update.callback_query
     await q.answer()
-    if not ok(update):
-        return
     uid = q.data.split(":")[1]
     pending = _pending.pop(uid, None)
     if not pending:
@@ -121,8 +114,6 @@ async def cb_cmd_ok2(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
 async def cb_cmd_no(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
     q = update.callback_query
     await q.answer()
-    if not ok(update):
-        return
     uid = q.data.split(":")[1]
     pending = _pending.pop(uid, None)
     if pending:

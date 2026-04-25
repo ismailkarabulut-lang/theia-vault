@@ -15,7 +15,7 @@ from telegram.ext import (
     filters,
 )
 
-from core.config import CHAT_ID, VAULT_DIR, ok
+from core.config import CHAT_ID, VAULT_DIR
 from core.db import db, get_full_history
 from core.pending import get_all_open_pendings, resolve_pending
 import os
@@ -91,8 +91,6 @@ def fmt_item(r) -> str:
 # ── /ekle conversation ─────────────────────────────────────────────────────────
 
 async def ekle_start(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> int:
-    if not ok(update):
-        return ConversationHandler.END
     ctx.user_data.clear()
     kb = [[
         InlineKeyboardButton("Görev",      callback_data="t:task"),
@@ -106,16 +104,12 @@ async def ekle_start(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> int:
 async def got_type(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> int:
     q = update.callback_query
     await q.answer()
-    if not ok(update):
-        return ConversationHandler.END
     ctx.user_data["type"] = q.data[2:]
     await q.edit_message_text("İçerik nedir?")
     return ASK_CONTENT
 
 
 async def got_content(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> int:
-    if not ok(update):
-        return ConversationHandler.END
     ctx.user_data["content"] = update.message.text
     await update.message.reply_text(
         "Ne zaman? (örn: `14:30` veya `23.04 14:30` veya `23.04.2026 14:30`)",
@@ -125,8 +119,6 @@ async def got_content(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> int:
 
 
 async def got_time(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> int:
-    if not ok(update):
-        return ConversationHandler.END
     dt = parse_time(update.message.text)
     if not dt:
         await update.message.reply_text(
@@ -150,8 +142,6 @@ async def got_time(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> int:
 async def got_recurrence(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> int:
     q = update.callback_query
     await q.answer()
-    if not ok(update):
-        return ConversationHandler.END
     rtype = q.data[2:]
 
     if rtype == "daily":
@@ -171,8 +161,6 @@ async def got_recurrence(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> int:
 
 
 async def got_recurrence_detail(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> int:
-    if not ok(update):
-        return ConversationHandler.END
     text  = update.message.text.strip()
     rtype = ctx.user_data.get("recurrence_type", "")
 
@@ -222,8 +210,6 @@ async def _ask_check(msg_or_query) -> int:
 async def got_check(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> int:
     q = update.callback_query
     await q.answer()
-    if not ok(update):
-        return ConversationHandler.END
     check_after = int(q.data[2:])
     d  = ctx.user_data
     dt: datetime = d["scheduled_time"]
@@ -245,8 +231,6 @@ async def got_check(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> int:
 
 
 async def ekle_cancel(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> int:
-    if not ok(update):
-        return ConversationHandler.END
     ctx.user_data.clear()
     await update.message.reply_text("İptal edildi.")
     return ConversationHandler.END
@@ -255,8 +239,6 @@ async def ekle_cancel(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> int:
 # ── /liste ─────────────────────────────────────────────────────────────────────
 
 async def liste(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
-    if not ok(update):
-        return
     with db() as c:
         rows = c.execute(
             "SELECT * FROM items WHERE status IN ('active','triggered') ORDER BY scheduled_time"
@@ -322,8 +304,6 @@ def git_push_vault(filepath: Path) -> tuple[bool, str]:
 # ── /sifirla ───────────────────────────────────────────────────────────────────
 
 async def sifirla(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
-    if not ok(update):
-        return
     user_id = update.effective_user.id
 
     filepath = export_to_vault(user_id)
@@ -347,8 +327,6 @@ async def sifirla(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
 async def cb_done(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
     q = update.callback_query
     await q.answer()
-    if not ok(update):
-        return
     iid = int(q.data.split(":")[1])
     with db() as c:
         row = c.execute("SELECT recurrence FROM items WHERE id=?", (iid,)).fetchone()
@@ -360,8 +338,6 @@ async def cb_done(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
 async def cb_cancel(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
     q = update.callback_query
     await q.answer()
-    if not ok(update):
-        return
     iid = int(q.data.split(":")[1])
     with db() as c:
         c.execute("UPDATE items SET status='cancelled' WHERE id=?", (iid,))
@@ -371,8 +347,6 @@ async def cb_cancel(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
 async def cb_ertele(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
     q = update.callback_query
     await q.answer()
-    if not ok(update):
-        return
     iid = q.data.split(":")[1]
     kb  = [[
         InlineKeyboardButton("15 dk",  callback_data=f"d:15:{iid}"),
@@ -386,8 +360,6 @@ async def cb_ertele(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
 async def cb_delay(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
     q = update.callback_query
     await q.answer()
-    if not ok(update):
-        return
     _, mins_s, iid_s = q.data.split(":")
     mins = int(mins_s)
     iid  = int(iid_s)
@@ -505,8 +477,6 @@ async def weekly_summary_job(ctx: ContextTypes.DEFAULT_TYPE) -> None:
 # ── /tamam ────────────────────────────────────────────────────────────────────
 
 async def tamam_cmd(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
-    if not ok(update):
-        return
     parts = (update.message.text or "").split(None, 1)
     if len(parts) < 2 or not parts[1].strip().isdigit():
         await update.message.reply_text("Kullanım: `/tamam <id>`", parse_mode="Markdown")

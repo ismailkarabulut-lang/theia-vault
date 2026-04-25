@@ -3,12 +3,13 @@
 import asyncio
 import logging
 import re
+from datetime import datetime
 
 import anthropic
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from core.config import SYSTEM, SYSTEM_WEB, WEB_TOOLS, claude, ok
+from core.config import SYSTEM, SYSTEM_WEB, WEB_TOOLS, claude
 from core.db import get_history, save_message
 from core.pending import add_pending
 from handlers.memory import _mem_view, memory_manager
@@ -33,7 +34,8 @@ _INTENT_RE     = re.compile(
 
 
 def _build_system(user_memory: str, web: bool) -> str:
-    base = SYSTEM_WEB if web else SYSTEM
+    now  = datetime.now().strftime("%Y-%m-%d %H:%M")
+    base = (SYSTEM_WEB if web else SYSTEM) + f"\n\nŞu anki tarih ve saat: {now} (UTC+3)"
     if not user_memory:
         return base
     return (
@@ -51,8 +53,6 @@ async def _update_memory_bg(user_id: int, history: list) -> None:
 
 
 async def handle_message(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
-    if not ok(update):
-        return
     user_id = update.effective_user.id
     text    = update.message.text
 
@@ -85,7 +85,7 @@ async def handle_message(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> Non
         )
         if use_search:
             kwargs["tools"] = WEB_TOOLS
-        resp  = claude.messages.create(**kwargs)
+        resp  = await asyncio.to_thread(claude.messages.create, **kwargs)
         reply = "\n".join(b.text for b in resp.content if hasattr(b, "text")) or "Sonuç bulunamadı."
         save_message(user_id, "assistant", reply)
         await update.message.reply_text(reply)

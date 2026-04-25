@@ -4,3 +4,7 @@ __pycache__/
 .env
 theia.db
 gatekeeper_log.json
+graphify-out/
+piper/
+vosk-model/
+*.wav

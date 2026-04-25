@@ -3,7 +3,7 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from core.config import claude, ok
+from core.config import claude
 from memory.memory_manager import MemoryManager
 
 memory_manager = MemoryManager()
@@ -18,14 +18,10 @@ async def _mem_view(update: Update, user_id: int) -> None:
 
 
 async def mem_view_cmd(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
-    if not ok(update):
-        return
     await _mem_view(update, update.effective_user.id)
 
 
 async def mem_save_cmd(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
-    if not ok(update):
-        return
     parts = (update.message.text or "").split(None, 1)
     if len(parts) < 2 or not parts[1].strip():
         await update.message.reply_text("Kullanım: `/kaydet <bilgi>`", parse_mode="Markdown")
@@ -35,8 +31,6 @@ async def mem_save_cmd(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def mem_forget_cmd(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
-    if not ok(update):
-        return
     parts = (update.message.text or "").split(None, 1)
     if len(parts) < 2 or not parts[1].strip():
         await update.message.reply_text("Kullanım: `/unut <bilgi>`", parse_mode="Markdown")

@@ -80,11 +80,18 @@ async function sendMessage() {
   playMedia(filename);
   setStatus('Düşünüyor...');
 
+  const now = new Date();
+  const timeStr = now.toLocaleString('tr-TR', {
+    weekday: 'long', year: 'numeric', month: 'long',
+    day: 'numeric', hour: '2-digit', minute: '2-digit'
+  });
+  const enriched = `[Şu an: ${timeStr}]\n${text}`;
+
   try {
     const res = await fetch('/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: text, tts: false }),
+      body: JSON.stringify({ message: enriched, tts: false }),
     });
     const data = await res.json();
     addMessage('theia', data.reply_text || 'Cevap alınamadı.');

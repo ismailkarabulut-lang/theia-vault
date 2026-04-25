@@ -14,7 +14,7 @@ from agents.web_agent import has_prefix
 from core.config import SYSTEM, SYSTEM_WEB, claude
 from core.db import get_history, save_message
 from core.pending import add_pending
-from handlers.memory import _mem_view, memory_manager
+from handlers.memory import _mem_view
 from memory import vault_api
 
 log = logging.getLogger(__name__)
@@ -59,13 +59,6 @@ async def _empty() -> str:
     return ""
 
 
-async def _update_memory_bg(user_id: int, history: list) -> None:
-    if memory_manager.should_update_memory(user_id, history):
-        new_mem = await memory_manager.extract_memory_update(user_id, history, claude)
-        if new_mem:
-            memory_manager.save_memory(user_id, new_mem)
-
-
 async def _save_to_vault(user_msg: str, assistant_reply: str) -> None:
     try:
         await vault_api.write_entry(
@@ -86,10 +79,18 @@ async def handle_message(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> Non
 
     # Memory komutları — öncelikli, prefix parse'dan önce
     if _MEM_SAVE_RE.search(text):
-        await update.message.reply_text(await memory_manager.manual_save(user_id, text, claude))
+        content = re.sub(r"^.*?(bunu hatırla|bunu kaydet|önemli:):?\s*", "", text, flags=re.IGNORECASE).strip() or text
+        await vault_api.write_entry({"content": content, "source": "manual"}, actor="human")
+        await update.message.reply_text("✓ Kaydedildi.")
         return
     if _MEM_FORGET_RE.search(text):
-        await update.message.reply_text(await memory_manager.manual_forget(user_id, text, claude))
+        query   = re.sub(r"^.*?(bunu unut|bunu sil memory'den)\s*", "", text, flags=re.IGNORECASE).strip() or text
+        results = await vault_api.search_entries(query, actor="human", limit=3)
+        if results:
+            await vault_api.soft_delete(results[0]["id"], actor="human")
+            await update.message.reply_text(f"✓ Silindi: {results[0]['content'][:80]!r}")
+        else:
+            await update.message.reply_text("İlgili bir kayıt bulunamadı.")
         return
     if _MEM_VIEW_RE.search(text):
         await _mem_view(update, user_id)
@@ -103,7 +104,6 @@ async def handle_message(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> Non
 
     save_message(user_id, "user", clean_msg)
     history  = get_history(user_id)
-    user_mem = memory_manager.load_memory(user_id)
 
     # 2. Paralel: vault bağlamı + web araması (sadece prefix varsa)
     mem_ctx, web_ctx = await asyncio.gather(
@@ -113,7 +113,7 @@ async def handle_message(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> Non
 
     # 3. Sistem prompt'a enjekte et
     system = _build_system(
-        user_mem,
+        "",
         web=web_requested and bool(web_ctx),
         vault_context=mem_ctx,
         web_context=web_ctx,
@@ -134,8 +134,7 @@ async def handle_message(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> Non
         # 5. Telegram'a gönder
         await update.message.reply_text(reply)
 
-        # 6. Arka plan: memory güncelle + vault'a kaydet (cevabı bekleme)
-        asyncio.create_task(_update_memory_bg(user_id, get_history(user_id)))
+        # 6. Vault'a kaydet — arka planda, cevabı bekleme
         asyncio.create_task(_save_to_vault(clean_msg, reply))
 
     except anthropic.RateLimitError:

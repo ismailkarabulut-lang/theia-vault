@@ -1,20 +1,39 @@
 """Hafıza komutları: /memory, /hafiza, /kaydet, /unut."""
 
+import asyncio
+
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from core.config import claude
-from memory.memory_manager import MemoryManager
+from core.db import db
+from memory import vault_api
 
-memory_manager = MemoryManager()
+
+def _sync_recent(limit: int) -> list[dict]:
+    with db() as c:
+        rows = c.execute(
+            """
+            SELECT content, summary, source, created_at
+            FROM   entries
+            WHERE  deleted = 0
+            ORDER  BY created_at DESC
+            LIMIT  ?
+            """,
+            (limit,),
+        ).fetchall()
+    return [dict(r) for r in rows]
 
 
 async def _mem_view(update: Update, user_id: int) -> None:
-    mem = memory_manager.load_memory(user_id)
-    if mem:
-        await update.message.reply_text(f"📝 Hatırladıklarım:\n\n{mem}")
-    else:
+    entries = await asyncio.to_thread(_sync_recent, 10)
+    if not entries:
         await update.message.reply_text("Henüz hiçbir şey kaydetmedim.")
+        return
+    lines = ["📝 Son kayıtlar:\n"]
+    for e in entries:
+        text = e.get("summary") or e["content"][:120]
+        lines.append(f"• {text}")
+    await update.message.reply_text("\n".join(lines))
 
 
 async def mem_view_cmd(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
@@ -26,8 +45,11 @@ async def mem_save_cmd(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
     if len(parts) < 2 or not parts[1].strip():
         await update.message.reply_text("Kullanım: `/kaydet <bilgi>`", parse_mode="Markdown")
         return
-    msg = await memory_manager.manual_save(update.effective_user.id, parts[1].strip(), claude)
-    await update.message.reply_text(msg)
+    await vault_api.write_entry(
+        {"content": parts[1].strip(), "source": "manual"},
+        actor="human",
+    )
+    await update.message.reply_text("✓ Kaydedildi.")
 
 
 async def mem_forget_cmd(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
@@ -35,5 +57,13 @@ async def mem_forget_cmd(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> Non
     if len(parts) < 2 or not parts[1].strip():
         await update.message.reply_text("Kullanım: `/unut <bilgi>`", parse_mode="Markdown")
         return
-    msg = await memory_manager.manual_forget(update.effective_user.id, parts[1].strip(), claude)
-    await update.message.reply_text(msg)
+    query   = parts[1].strip()
+    results = await vault_api.search_entries(query, actor="human", limit=3)
+    if not results:
+        await update.message.reply_text("İlgili bir kayıt bulunamadı.")
+        return
+    ok = await vault_api.soft_delete(results[0]["id"], actor="human")
+    if ok:
+        await update.message.reply_text(f"✓ Silindi: {results[0]['content'][:80]!r}")
+    else:
+        await update.message.reply_text("Silme başarısız.")

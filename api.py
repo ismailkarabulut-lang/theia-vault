@@ -3,7 +3,7 @@ import asyncio
 import logging
 import re
 import tempfile
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import edge_tts
 import anthropic
@@ -15,6 +15,7 @@ from pydantic import BaseModel
 from agents import memory_agent, web_agent
 from agents.web_agent import has_prefix
 from core.config import SYSTEM, SYSTEM_WEB, USER_ID, claude
+from handlers.schedule import dt_str, parse_time
 from core.db import db, get_history, save_message
 from memory import vault_api
 
@@ -35,6 +36,18 @@ VOICES = {
 class ChatRequest(BaseModel):
     message: str
     tts: bool = False
+
+
+class ItemCreate(BaseModel):
+    type: str
+    content: str
+    scheduled_time: str
+    check_after: int = 0
+    recurrence: str = "none"
+
+
+class DelayRequest(BaseModel):
+    minutes: int
 
 
 def _build_system(web: bool, vault_context: str = "", web_context: str = "") -> str:
@@ -165,6 +178,67 @@ async def reminders():
     except Exception as e:
         log.exception("Reminders hatası")
         return {"reminders": []}
+
+
+@app.post("/items")
+async def create_item(req: ItemCreate):
+    try:
+        dt = parse_time(req.scheduled_time)
+        if dt is None:
+            raise HTTPException(status_code=400, detail="Geçersiz saat formatı.")
+        with db() as c:
+            cur = c.execute(
+                "INSERT INTO items (type, content, scheduled_time, check_after, recurrence, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (req.type, req.content, dt_str(dt), req.check_after,
+                 req.recurrence, dt_str(datetime.now())),
+            )
+            item_id = cur.lastrowid
+        return {"ok": True, "id": item_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        log.exception("Item ekleme hatası")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/items")
+async def list_items():
+    try:
+        with db() as c:
+            rows = c.execute(
+                "SELECT * FROM items WHERE status IN ('active','triggered') ORDER BY scheduled_time"
+            ).fetchall()
+        return {"items": [dict(r) for r in rows]}
+    except Exception as e:
+        log.exception("Item listeleme hatası")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/items/{item_id}/complete")
+async def complete_item(item_id: int):
+    try:
+        with db() as c:
+            c.execute("UPDATE items SET status='completed' WHERE id=?", (item_id,))
+        return {"ok": True}
+    except Exception as e:
+        log.exception("Item tamamlama hatası")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/items/{item_id}/delay")
+async def delay_item(item_id: int, req: DelayRequest):
+    try:
+        new_time = dt_str(datetime.now() + timedelta(minutes=req.minutes))
+        with db() as c:
+            c.execute(
+                "UPDATE items SET scheduled_time=?, status='active' WHERE id=?",
+                (new_time, item_id),
+            )
+        return {"ok": True}
+    except Exception as e:
+        log.exception("Item erteleme hatası")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/pendings")

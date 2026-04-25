@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """THEIA — Kaptan İsmail'in kişisel AI asistanı."""
 
+import asyncio
 import logging
 from datetime import time as dtime, timezone
 
@@ -16,6 +17,7 @@ from telegram.ext import (
     filters,
 )
 
+from agents import summarizer
 from core.config import TOKEN, USER_ID, VAULT_DIR, log
 from core.db import init_db
 from core.pending import init_pending_table
@@ -45,12 +47,16 @@ async def _auth(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
         raise ApplicationHandlerStop
 
 
+async def _post_init(app: Application) -> None:
+    asyncio.create_task(summarizer.run_forever())
+
+
 def main() -> None:
     init_db()
     init_pending_table()
     VAULT_DIR.mkdir(parents=True, exist_ok=True)
 
-    app = Application.builder().token(TOKEN).build()
+    app = Application.builder().token(TOKEN).post_init(_post_init).build()
 
     app.add_handler(TypeHandler(Update, _auth), group=-1)
 

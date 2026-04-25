@@ -67,10 +67,156 @@ function setStatus(text) {
   document.getElementById('status-text').textContent = text;
 }
 
+// ── /ekle wizard ──────────────────────────────────────────────────────────────
+
+const ekle = { active: false, step: null, data: {}, cardEl: null };
+
+function _ekleBtn(label, onClick) {
+  const b = document.createElement('button');
+  b.textContent = label;
+  b.style.cssText = 'margin:4px 4px 4px 0;padding:8px 14px;background:#1a1a2e;color:#e2e8f0;'
+    + 'border:1px solid #7c3aed;border-radius:6px;cursor:pointer;font-size:13px;';
+  b.onmouseenter = () => { b.style.background = '#2d2d4e'; };
+  b.onmouseleave = () => { b.style.background = '#1a1a2e'; };
+  b.onclick = onClick;
+  return b;
+}
+
+function _ekleInput(placeholder) {
+  const inp = document.createElement('input');
+  inp.type = 'text';
+  inp.placeholder = placeholder;
+  inp.style.cssText = 'display:block;width:100%;margin-top:10px;padding:10px 14px;'
+    + 'background:#1a1a2e;border:1px solid #1e1e3a;border-radius:6px;'
+    + 'color:#e2e8f0;font-size:14px;outline:none;box-sizing:border-box;';
+  inp.onfocus = () => { inp.style.borderColor = '#7c3aed'; };
+  inp.onblur  = () => { inp.style.borderColor = '#1e1e3a'; };
+  return inp;
+}
+
+function _scrollBottom() {
+  const b = document.getElementById('chat-box');
+  b.scrollTop = b.scrollHeight;
+}
+
+function ekleStart() {
+  ekle.active = true;
+  ekle.step = 'type';
+  ekle.data = {};
+  const chatBox = document.getElementById('chat-box');
+  const card = document.createElement('div');
+  card.className = 'msg theia';
+  const lbl = document.createElement('div');
+  lbl.className = 'label';
+  lbl.textContent = 'Theia';
+  card.appendChild(lbl);
+  const body = document.createElement('div');
+  card.appendChild(body);
+  if (ekle.cardEl) ekle.cardEl.remove();
+  ekle.cardEl = card;
+  chatBox.appendChild(card);
+  _scrollBottom();
+  _ekleRender(body);
+}
+
+function _ekleRender(body) {
+  body.innerHTML = '';
+
+  if (ekle.step === 'type') {
+    body.innerHTML = 'Ne eklemek istersiniz?<br><br>';
+    [['Görev', 'task'], ['Rutin', 'routine'], ['Hatırlatma', 'reminder']].forEach(([lbl, val]) => {
+      body.appendChild(_ekleBtn(lbl, () => {
+        ekle.data.type = val;
+        ekle.step = 'content';
+        _ekleRender(body);
+      }));
+    });
+
+  } else if (ekle.step === 'content') {
+    const typeLabel = { task: 'Görev', routine: 'Rutin', reminder: 'Hatırlatma' }[ekle.data.type];
+    body.innerHTML = `<strong>${typeLabel}</strong> seçildi.<br><br>İçerik nedir?`;
+    const inp = _ekleInput('Örn: Raporu bitir');
+    const btn = _ekleBtn('Devam →', () => {
+      const val = inp.value.trim();
+      if (!val) return;
+      ekle.data.content = val;
+      ekle.step = 'time';
+      _ekleRender(body);
+    });
+    btn.style.marginTop = '10px';
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') btn.click(); });
+    body.appendChild(inp);
+    body.appendChild(btn);
+    setTimeout(() => inp.focus(), 50);
+
+  } else if (ekle.step === 'time') {
+    body.innerHTML = 'Ne zaman?<br><small style="color:#64748b">Örn: 14:30 veya 23.04.2026 09:00</small>';
+    const inp = _ekleInput('14:30');
+    const btn = _ekleBtn('Devam →', () => {
+      const val = inp.value.trim();
+      if (!val) return;
+      ekle.data.scheduled_time = val;
+      ekle.step = 'check';
+      _ekleRender(body);
+    });
+    btn.style.marginTop = '10px';
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') btn.click(); });
+    body.appendChild(inp);
+    body.appendChild(btn);
+    setTimeout(() => inp.focus(), 50);
+
+  } else if (ekle.step === 'check') {
+    body.innerHTML = 'Kontrol süresi?<br><br>';
+    [['5 dk', 5], ['10 dk', 10], ['15 dk', 15], ['30 dk', 30], ['1 saat', 60], ['Kontrol etme', 0]].forEach(([lbl, val]) => {
+      body.appendChild(_ekleBtn(lbl, async () => {
+        ekle.data.check_after = val;
+        ekle.active = false;
+        ekle.step = null;
+        body.innerHTML = '<em style="color:#64748b">Kaydediliyor...</em>';
+        await _ekleSubmit(body);
+      }));
+    });
+  }
+
+  _scrollBottom();
+}
+
+async function _ekleSubmit(body) {
+  try {
+    const res = await fetch('/items', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: ekle.data.type,
+        content: ekle.data.content,
+        scheduled_time: ekle.data.scheduled_time,
+        check_after: ekle.data.check_after,
+        recurrence: 'none',
+      }),
+    });
+    const data = await res.json();
+    body.innerHTML = data.ok
+      ? `✅ Eklendi. <span style="color:#64748b">(#${data.id})</span>`
+      : '❌ Eklenemedi.';
+  } catch {
+    body.innerHTML = '❌ Bağlantı hatası.';
+  }
+  ekle.cardEl = null;
+  _scrollBottom();
+}
+
 async function sendMessage() {
   const input = document.getElementById('msg-input');
   const text = input.value.trim();
   if (!text) return;
+
+  if (text.toLowerCase() === '/ekle') {
+    addMessage('user', text);
+    input.value = '';
+    input.style.height = 'auto';
+    ekleStart();
+    return;
+  }
 
   addMessage('user', text);
   input.value = '';

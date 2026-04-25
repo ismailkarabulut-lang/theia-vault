@@ -3,21 +3,24 @@ import asyncio
 import logging
 import re
 import tempfile
+from datetime import datetime
 
 import edge_tts
 import anthropic
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from agents import memory_agent, web_agent
 from agents.web_agent import has_prefix
-from core.config import SYSTEM, SYSTEM_WEB, claude
-from core.db import get_history, save_message
+from core.config import SYSTEM, SYSTEM_WEB, USER_ID, claude
+from core.db import db, get_history, save_message
 from memory import vault_api
 
 log = logging.getLogger(__name__)
 app = FastAPI()
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 _MEM_SAVE_RE   = re.compile(r"bunu hatırla|bunu kaydet|önemli:", re.IGNORECASE)
 _MEM_FORGET_RE = re.compile(r"bunu unut|bunu sil memory'den", re.IGNORECASE)
@@ -30,10 +33,8 @@ VOICES = {
 
 
 class ChatRequest(BaseModel):
-    user_id: int
-    text: str
-    voice: str = "kadin"
-    tts: bool = True
+    message: str
+    tts: bool = False
 
 
 def _build_system(web: bool, vault_context: str = "", web_context: str = "") -> str:
@@ -57,11 +58,11 @@ async def _save_to_vault(user_msg: str, assistant_reply: str) -> None:
         log.exception("vault kayıt başarısız")
 
 
-async def _claude_reply(user_id: int, text: str) -> str:
+async def _claude_reply(text: str) -> str:
     web_requested, clean_msg = has_prefix(text)
 
-    save_message(user_id, "user", clean_msg)
-    history = get_history(user_id)
+    save_message(USER_ID, "user", clean_msg)
+    history = get_history(USER_ID)
 
     mem_ctx, web_ctx = await asyncio.gather(
         memory_agent.get_context(clean_msg),
@@ -77,7 +78,7 @@ async def _claude_reply(user_id: int, text: str) -> str:
         messages=history,
     )
     reply = "\n".join(b.text for b in resp.content if hasattr(b, "text")) or "Sonuç bulunamadı."
-    save_message(user_id, "assistant", reply)
+    save_message(USER_ID, "assistant", reply)
 
     asyncio.create_task(_save_to_vault(clean_msg, reply))
     return reply
@@ -94,15 +95,15 @@ async def _tts(text: str, voice_key: str) -> str:
 @app.post("/chat")
 async def chat(req: ChatRequest):
     try:
-        if _MEM_SAVE_RE.search(req.text):
-            content = re.sub(r"^.*?(bunu hatırla|bunu kaydet|önemli:):?\s*", "", req.text,
-                             flags=re.IGNORECASE).strip() or req.text
+        if _MEM_SAVE_RE.search(req.message):
+            content = re.sub(r"^.*?(bunu hatırla|bunu kaydet|önemli:):?\s*", "", req.message,
+                             flags=re.IGNORECASE).strip() or req.message
             await vault_api.write_entry({"content": content, "source": "manual"}, actor="human")
             reply = "✓ Kaydedildi."
 
-        elif _MEM_FORGET_RE.search(req.text):
-            query   = re.sub(r"^.*?(bunu unut|bunu sil memory'den)\s*", "", req.text,
-                             flags=re.IGNORECASE).strip() or req.text
+        elif _MEM_FORGET_RE.search(req.message):
+            query   = re.sub(r"^.*?(bunu unut|bunu sil memory'den)\s*", "", req.message,
+                             flags=re.IGNORECASE).strip() or req.message
             results = await vault_api.search_entries(query, actor="human", limit=3)
             if results:
                 await vault_api.soft_delete(results[0]["id"], actor="human")
@@ -110,7 +111,7 @@ async def chat(req: ChatRequest):
             else:
                 reply = "İlgili bir kayıt bulunamadı."
 
-        elif _MEM_VIEW_RE.search(req.text):
+        elif _MEM_VIEW_RE.search(req.message):
             from handlers.memory import _sync_recent
             entries = await asyncio.to_thread(_sync_recent, 10)
             if entries:
@@ -122,19 +123,86 @@ async def chat(req: ChatRequest):
                 reply = "Henüz hiçbir şey kaydetmedim."
 
         else:
-            reply = await _claude_reply(req.user_id, req.text)
+            reply = await _claude_reply(req.message)
 
         if not req.tts:
             return {"reply_text": reply}
 
-        audio_path = await _tts(reply, req.voice)
+        audio_path = await _tts(reply, "kadin")
         return FileResponse(audio_path, media_type="audio/mpeg", filename="reply.mp3")
 
     except anthropic.RateLimitError:
         raise HTTPException(status_code=429, detail="Rate limit, biraz bekle.")
     except Exception as e:
-        log.exception("API hatası user_id=%s", req.user_id)
+        log.exception("API hatası")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/reminders")
+async def reminders():
+    """Zamanı gelmiş, henüz gönderilmemiş kontrol bildirimlerini döndür."""
+    try:
+        now_s = datetime.now().strftime("%Y-%m-%d %H:%M")
+        with db() as c:
+            rows = c.execute(
+                """SELECT ch.id, ch.item_id, i.content, i.type, ch.check_at
+                   FROM checks ch
+                   JOIN items i ON i.id = ch.item_id
+                   WHERE ch.status = 'pending' AND ch.check_at <= ?""",
+                (now_s,)
+            ).fetchall()
+            for row in rows:
+                c.execute(
+                    "UPDATE checks SET status='sent' WHERE id=?",
+                    (row["id"],)
+                )
+        return {"reminders": [
+            {"id": r["id"], "item_id": r["item_id"],
+             "content": r["content"], "type": r["type"],
+             "check_at": r["check_at"]}
+            for r in rows
+        ]}
+    except Exception as e:
+        log.exception("Reminders hatası")
+        return {"reminders": []}
+
+
+@app.get("/pendings")
+async def get_pendings():
+    """Çözümlenmemiş niyetleri Theia'nın sesiyle döndür."""
+    try:
+        from core.pending import get_open_pendings
+        items = get_open_pendings(USER_ID)
+        if not items:
+            return {"pendings": []}
+
+        pending_texts = "\n".join(
+            f"- [{p['created_at']}]: {p['text']}"
+            for p in items[:3]
+        )
+        prompt = (
+            f"Kaptan şu niyetleri belirtti ama uzun süredir dönmedi:\n"
+            f"{pending_texts}\n\n"
+            f"Theia olarak tek bir doğal Türkçe cümleyle sor. "
+            f"Saygılı, meraklı, vazgeçmeyen ton. "
+            f"'Kaptan' diye başla. Maksimum 2 cümle."
+        )
+        resp = await asyncio.to_thread(
+            claude.messages.create,
+            model="claude-haiku-4-5-20251001",
+            max_tokens=150,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        message = resp.content[0].text.strip()
+        return {"pendings": [{"text": message, "ids": [p["id"] for p in items[:3]]}]}
+    except Exception as e:
+        log.exception("Pendings hatası")
+        return {"pendings": []}
+
+
+@app.get("/")
+async def index():
+    return FileResponse("static/index.html")
 
 
 @app.get("/health")

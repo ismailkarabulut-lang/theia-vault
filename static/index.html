@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>THEIA</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+
+    <!-- Sol Panel: Avatar -->
+    <div id="left-panel">
+      <div id="brand">THEIA</div>
+      <div id="avatar-container">
+        <img id="avatar-img"
+             src="media/theia.jpg"
+             alt="THEIA"
+             onerror="this.style.display='none'">
+        <video id="avatar-video" autoplay muted playsinline></video>
+      </div>
+      <div id="status-text">Hazır, Kaptan.</div>
+      <button id="mic-btn" title="Sesli mod">
+        <span id="mic-icon">🎤</span>
+      </button>
+    </div>
+
+    <!-- Sağ Panel: Sohbet -->
+    <div id="right-panel">
+      <div id="chat-box"></div>
+      <div id="input-area">
+        <textarea
+          id="msg-input"
+          placeholder="Kaptan..."
+          rows="1"
+        ></textarea>
+        <button id="send-btn">Gönder</button>
+      </div>
+    </div>
+
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>

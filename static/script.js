@@ -9,6 +9,7 @@ const MEDIA_MAP = {
   list:     { file: 'listing.mp4',    keywords: ['listele','göster','neler var'] },
   save:     { file: 'saving.mp4',     keywords: ['kaydet','hatırla','not al'] },
   thinking: { file: 'thinking.mp4',   keywords: ['analiz','düşün','ne yapmalı','önerin'] },
+  wake:     { file: 'wake.mp4',       keywords: ['hey theia','theia','merhaba theia'] },
 };
 const FALLBACK_MEDIA = 'general.mp4';
 

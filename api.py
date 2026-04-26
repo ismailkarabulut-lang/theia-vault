@@ -7,7 +7,9 @@ from datetime import datetime, timedelta
 
 import edge_tts
 import anthropic
-from fastapi import FastAPI, HTTPException
+import uvicorn
+from fastapi import APIRouter, FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -20,8 +22,20 @@ from core.db import db, get_history, save_message
 from memory import vault_api
 
 log = logging.getLogger(__name__)
+
+# Telegram user_id ile aynı — conversations tablosunu ortak kullanır
+KAPTAN_ID = USER_ID
+
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+api_router = APIRouter(prefix="/api")
 
 _MEM_SAVE_RE   = re.compile(r"bunu hatırla|bunu kaydet|önemli:", re.IGNORECASE)
 _MEM_FORGET_RE = re.compile(r"bunu unut|bunu sil memory'den", re.IGNORECASE)
@@ -74,8 +88,8 @@ async def _save_to_vault(user_msg: str, assistant_reply: str) -> None:
 async def _claude_reply(text: str) -> str:
     web_requested, clean_msg = has_prefix(text)
 
-    save_message(USER_ID, "user", clean_msg)
-    history = get_history(USER_ID)
+    save_message(KAPTAN_ID, "user", clean_msg)
+    history = get_history(KAPTAN_ID)
 
     mem_ctx, web_ctx = await asyncio.gather(
         memory_agent.get_context(clean_msg),
@@ -91,7 +105,7 @@ async def _claude_reply(text: str) -> str:
         messages=history,
     )
     reply = "\n".join(b.text for b in resp.content if hasattr(b, "text")) or "Sonuç bulunamadı."
-    save_message(USER_ID, "assistant", reply)
+    save_message(KAPTAN_ID, "assistant", reply)
 
     asyncio.create_task(_save_to_vault(clean_msg, reply))
     return reply
@@ -105,7 +119,7 @@ async def _tts(text: str, voice_key: str) -> str:
     return tmp.name
 
 
-@app.post("/chat")
+@api_router.post("/chat")
 async def chat(req: ChatRequest):
     try:
         if _MEM_SAVE_RE.search(req.message):
@@ -139,7 +153,7 @@ async def chat(req: ChatRequest):
             reply = await _claude_reply(req.message)
 
         if not req.tts:
-            return {"reply_text": reply}
+            return {"response": reply}
 
         audio_path = await _tts(reply, "kadin")
         return FileResponse(audio_path, media_type="audio/mpeg", filename="reply.mp3")
@@ -246,7 +260,7 @@ async def get_pendings():
     """Çözümlenmemiş niyetleri Theia'nın sesiyle döndür."""
     try:
         from core.pending import get_open_pendings
-        items = get_open_pendings(USER_ID)
+        items = get_open_pendings(KAPTAN_ID)
         if not items:
             return {"pendings": []}
 
@@ -279,6 +293,13 @@ async def index():
     return FileResponse("static/index.html")
 
 
-@app.get("/health")
+@api_router.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+app.include_router(api_router)
+
+
+if __name__ == "__main__":
+    uvicorn.run("api:app", host="0.0.0.0", port=8585, reload=False)

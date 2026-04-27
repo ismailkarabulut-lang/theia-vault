@@ -49,7 +49,7 @@ ANTHROPIC_API_KEY=your_key_here
 Botu başlat:
 
 ```bash
-python main.py
+python3 main.py
 ```
 
 ### Termux (Android) Kurulumu

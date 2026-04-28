@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 import edge_tts
 import anthropic
 import uvicorn
-from fastapi import APIRouter, FastAPI, HTTPException
+from fastapi import APIRouter, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -165,6 +165,135 @@ async def chat(req: ChatRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@api_router.get("/health")
+async def health():
+    return {"status": "ok"}
+
+
+# ── VAULT ─────────────────────────────────────────────────────────────────────
+@api_router.get("/vault/entries")
+async def vault_entries(
+    limit: int = Query(50, ge=1, le=200),
+    topic: str = Query(None),
+    q: str = Query(None),
+):
+    try:
+        with db() as c:
+            if q:
+                rows = c.execute(
+                    """SELECT e.id, e.content, e.summary, e.topic_slug, e.source,
+                              e.confidence, e.created_at, e.updated_at
+                       FROM entries e
+                       JOIN entries_fts f ON e.rowid = f.rowid
+                       WHERE f.entries_fts MATCH ? AND e.deleted=0
+                       ORDER BY e.updated_at DESC LIMIT ?""",
+                    (q, limit),
+                ).fetchall()
+            elif topic:
+                rows = c.execute(
+                    """SELECT e.id, e.content, e.summary, e.topic_slug, e.source,
+                              e.confidence, e.created_at, e.updated_at
+                       FROM entries e
+                       JOIN topic_entries te ON e.id = te.entry_id
+                       WHERE te.topic_slug=? AND e.deleted=0
+                       ORDER BY e.updated_at DESC LIMIT ?""",
+                    (topic, limit),
+                ).fetchall()
+            else:
+                rows = c.execute(
+                    """SELECT id, content, summary, topic_slug, source,
+                              confidence, created_at, updated_at
+                       FROM entries WHERE deleted=0
+                       ORDER BY updated_at DESC LIMIT ?""",
+                    (limit,),
+                ).fetchall()
+        return {"entries": [dict(r) for r in rows]}
+    except Exception as e:
+        log.exception("Vault entries hatası")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/vault/topics")
+async def vault_topics():
+    try:
+        with db() as c:
+            rows = c.execute(
+                "SELECT slug, title, summary, entry_count, updated_at "
+                "FROM topics ORDER BY entry_count DESC"
+            ).fetchall()
+        return {"topics": [dict(r) for r in rows]}
+    except Exception as e:
+        log.exception("Vault topics hatası")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/vault/stats")
+async def vault_stats():
+    try:
+        with db() as c:
+            total    = c.execute("SELECT COUNT(*) FROM entries WHERE deleted=0").fetchone()[0]
+            topics_n = c.execute("SELECT COUNT(*) FROM topics").fetchone()[0]
+            sources  = c.execute(
+                "SELECT source, COUNT(*) as n FROM entries WHERE deleted=0 GROUP BY source"
+            ).fetchall()
+            latest   = c.execute(
+                "SELECT updated_at FROM entries WHERE deleted=0 ORDER BY updated_at DESC LIMIT 1"
+            ).fetchone()
+        return {
+            "total_entries": total,
+            "total_topics":  topics_n,
+            "sources":       {r["source"]: r["n"] for r in sources},
+            "last_updated":  latest["updated_at"] if latest else None,
+        }
+    except Exception as e:
+        log.exception("Vault stats hatası")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── AUDIT ─────────────────────────────────────────────────────────────────────
+@api_router.get("/audit")
+async def audit_log(n: int = Query(50, ge=1, le=500)):
+    try:
+        with db() as c:
+            rows = c.execute(
+                "SELECT id, action, target_id, actor, status, detail, ts "
+                "FROM audit ORDER BY id DESC LIMIT ?",
+                (n,),
+            ).fetchall()
+        return {"events": [dict(r) for r in rows]}
+    except Exception as e:
+        log.exception("Audit log hatası")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── CONVERSATIONS ─────────────────────────────────────────────────────────────
+@api_router.get("/conversations/stats")
+async def conv_stats():
+    try:
+        with db() as c:
+            total = c.execute(
+                "SELECT COUNT(*) FROM conversations WHERE user_id=?", (KAPTAN_ID,)
+            ).fetchone()[0]
+            today = c.execute(
+                "SELECT COUNT(*) FROM conversations "
+                "WHERE user_id=? AND timestamp >= date('now')",
+                (KAPTAN_ID,),
+            ).fetchone()[0]
+            last = c.execute(
+                "SELECT timestamp FROM conversations WHERE user_id=? ORDER BY id DESC LIMIT 1",
+                (KAPTAN_ID,),
+            ).fetchone()
+        return {
+            "total_messages": total,
+            "today":          today,
+            "last_message":   last["timestamp"] if last else None,
+        }
+    except Exception as e:
+        log.exception("Conv stats hatası")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── DİĞER MEVCUT ENDPOINT'LER ─────────────────────────────────────────────────
 @app.get("/reminders")
 async def reminders():
     """Zamanı gelmiş, henüz gönderilmemiş kontrol bildirimlerini döndür."""
@@ -293,13 +422,8 @@ async def index():
     return FileResponse("static/index.html")
 
 
-@api_router.get("/health")
-async def health():
-    return {"status": "ok"}
-
-
 app.include_router(api_router)
 
 
 if __name__ == "__main__":
-    uvicorn.run("api:app", host="0.0.0.0", port=8585, reload=False)
+    uvicorn.run("api:app", host="0.0.0.0", port=8000, reload=False)

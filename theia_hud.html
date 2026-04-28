@@ -110,13 +110,11 @@ canvas { position:absolute; top:0; left:0; }
 .mod-icon.svg-icon { padding:6px; }
 .mod-icon.svg-icon svg { width:100%; height:100%; color:rgba(255,255,255,0.95); position:relative; z-index:2; }
 
-/* WOLFSTREET icon */
 #m-wolf .mod-icon {
   background: radial-gradient(circle at 65% 60%, var(--col2, #E8B86D) 0%, var(--col, #B8C5D6) 55%, #6b7585 100%);
   box-shadow: 0 2px 12px rgba(232, 184, 109, 0.35), inset 0 0 8px rgba(232, 184, 109, 0.15);
 }
 #m-wolf .mod-icon svg { color: rgba(20, 25, 35, 0.85); }
-#m-wolf .mod-icon::after { background: linear-gradient(135deg, rgba(255,255,255,0.3) 0%, transparent 40%); }
 
 .mod-name {
   font-family:'Orbitron', sans-serif;
@@ -166,13 +164,9 @@ canvas { position:absolute; top:0; left:0; }
   pointer-events:none; text-align:center; white-space:nowrap;
   display:flex; align-items:center; gap:16px;
 }
-#statusbar .sep {
-  width:4px; height:4px; border-radius:50%;
-  background:rgba(255,255,255,0.12);
-}
+#statusbar .sep { width:4px; height:4px; border-radius:50%; background:rgba(255,255,255,0.12); }
 #statusbar .pulse-dot {
-  width:6px; height:6px; border-radius:50%;
-  background:#1D9E75;
+  width:6px; height:6px; border-radius:50%; background:#1D9E75;
   box-shadow:0 0 8px #1D9E75, 0 0 16px #1D9E75;
   animation:statusPulse 2s ease-in-out infinite;
 }
@@ -192,37 +186,23 @@ canvas { position:absolute; top:0; left:0; }
   text-shadow:0 0 40px rgba(124,110,245,0.1);
   transition:transform 0.65s cubic-bezier(0.23, 1, 0.32, 1), opacity 0.5s;
 }
-#corelabel span {
-  font-size:9px; letter-spacing:.4em;
-  color:rgba(255,255,255,0.04);
-  font-weight:500;
-}
-body.ws-open #corelabel {
-  transform: translate(-50%, -50%) translateX(-12%) scale(0.85);
-  opacity: 0.4;
-}
+#corelabel span { font-size:9px; letter-spacing:.4em; color:rgba(255,255,255,0.04); }
+body.ws-open #corelabel { transform: translate(-50%, -50%) translateX(-12%) scale(0.85); opacity: 0.4; }
 
 /* ========== TOP HUD BAR ========== */
 #hud-top {
   position:absolute; top:0; left:0; right:0;
-  height:48px;
-  display:flex; align-items:center; justify-content:space-between;
-  padding:0 32px;
-  pointer-events:none;
-  z-index:20;
+  height:48px; display:flex; align-items:center; justify-content:space-between;
+  padding:0 32px; pointer-events:none; z-index:20;
 }
 .hud-left, .hud-right { display:flex; align-items:center; gap:20px; }
 .hud-item {
   font-family:'JetBrains Mono', monospace;
   font-size:9px; letter-spacing:.1em;
-  color:rgba(255,255,255,0.2);
-  text-transform:uppercase;
+  color:rgba(255,255,255,0.2); text-transform:uppercase;
 }
 .hud-item span { color:rgba(255,255,255,0.45); }
-.hud-line {
-  width:120px; height:1px;
-  background:linear-gradient(90deg, transparent, rgba(124,110,245,0.3), transparent);
-}
+.hud-line { width:120px; height:1px; background:linear-gradient(90deg, transparent, rgba(124,110,245,0.3), transparent); }
 
 /* ========== DRAG & DROP ========== */
 .mod.dragging {
@@ -355,22 +335,10 @@ body.ws-open #corelabel {
   position: relative; overflow: hidden;
 }
 #ws-icon svg { width: 22px; height: 22px; color: rgba(255,255,255,0.95); }
-#ws-icon::after {
-  content: '';
-  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-  background: linear-gradient(135deg, rgba(255,255,255,0.25) 0%, transparent 50%);
-}
+#ws-icon::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(135deg, rgba(255,255,255,0.25) 0%, transparent 50%); }
 #ws-title-wrap { flex: 1; }
-#ws-title {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 14px; font-weight: 700; letter-spacing: .14em;
-  color: rgba(255,255,255,0.95); text-transform: uppercase;
-}
-#ws-sub {
-  font-family: 'Rajdhani', sans-serif;
-  font-size: 12px; color: rgba(255,255,255,0.4);
-  letter-spacing: .04em; margin-top: 2px;
-}
+#ws-title { font-family: 'Orbitron', sans-serif; font-size: 14px; font-weight: 700; letter-spacing: .14em; color: rgba(255,255,255,0.95); text-transform: uppercase; }
+#ws-sub { font-family: 'Rajdhani', sans-serif; font-size: 12px; color: rgba(255,255,255,0.4); letter-spacing: .04em; margin-top: 2px; }
 #ws-close {
   width: 36px; height: 36px;
   border-radius: 9px;
@@ -380,39 +348,23 @@ body.ws-open #corelabel {
   display: flex; align-items: center; justify-content: center;
   transition: all 0.2s; flex-shrink: 0;
 }
-#ws-close:hover {
-  background: rgba(232,93,36,0.15);
-  border-color: rgba(232,93,36,0.4);
-  transform: rotate(90deg);
-}
+#ws-close:hover { background: rgba(232,93,36,0.15); border-color: rgba(232,93,36,0.4); transform: rotate(90deg); }
 #ws-close svg { width: 14px; height: 14px; stroke: rgba(255,255,255,0.6); stroke-width: 2; fill: none; stroke-linecap: round; }
 #ws-close:hover svg { stroke: rgba(255,180,140,0.95); }
 
-/* Canvas workspace aç/kapat */
-#c {
-  transition: transform 0.65s cubic-bezier(0.23, 1, 0.32, 1);
-}
-body.ws-open #c {
-  transform-origin: 50% 50%;
-  transform: translateX(-12%) scale(0.85);
-}
-body.ws-open .mod:not(.active) {
-  opacity: 0.3;
-  transition: opacity 0.5s;
-}
+#c { transition: transform 0.65s cubic-bezier(0.23, 1, 0.32, 1); }
+body.ws-open #c { transform-origin: 50% 50%; transform: translateX(-12%) scale(0.85); }
+body.ws-open .mod:not(.active) { opacity: 0.3; transition: opacity 0.5s; }
 body.ws-open .mod.active { z-index: 70; }
 
 /* ========== TALK / CHAT WORKSPACE ========== */
 .talk-history {
-  width: 220px;
-  border-right: 1px solid rgba(255,255,255,0.05);
-  display: flex; flex-direction: column;
-  flex-shrink: 0;
+  width: 220px; border-right: 1px solid rgba(255,255,255,0.05);
+  display: flex; flex-direction: column; flex-shrink: 0;
 }
 .talk-history-header {
   padding: 14px 16px 10px;
-  font-family: 'Orbitron', sans-serif;
-  font-size: 9px; font-weight: 600; letter-spacing: .18em;
+  font-family: 'Orbitron', sans-serif; font-size: 9px; font-weight: 600; letter-spacing: .18em;
   color: rgba(255,255,255,0.3); text-transform: uppercase;
   display: flex; justify-content: space-between; align-items: center;
 }
@@ -421,50 +373,34 @@ body.ws-open .mod.active { z-index: 70; }
   border: 1px solid rgba(199,125,255,0.2);
   color: rgba(199,125,255,0.9);
   font-family: 'JetBrains Mono', monospace;
-  font-size: 9px; padding: 4px 8px;
-  border-radius: 5px; cursor: pointer;
+  font-size: 9px; padding: 4px 8px; border-radius: 5px; cursor: pointer;
   letter-spacing: .05em; transition: all 0.2s;
 }
 .talk-new-btn:hover { background: rgba(199,125,255,0.2); border-color: rgba(199,125,255,0.4); }
 .talk-history-list {
-  flex: 1; overflow-y: auto;
-  padding: 4px 8px 12px;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255,255,255,0.08) transparent;
+  flex: 1; overflow-y: auto; padding: 4px 8px 12px;
+  scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.08) transparent;
 }
 .talk-history-list::-webkit-scrollbar { width: 3px; }
 .talk-history-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
 .history-item {
   padding: 9px 11px; border-radius: 7px; margin-bottom: 4px;
-  cursor: pointer; border: 1px solid transparent;
-  transition: all 0.2s;
+  cursor: pointer; border: 1px solid transparent; transition: all 0.2s;
 }
 .history-item:hover { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.06); }
 .history-item.active { background: rgba(199,125,255,0.08); border-color: rgba(199,125,255,0.2); }
 .history-title {
-  font-family: 'Rajdhani', sans-serif;
-  font-size: 12.5px; font-weight: 500;
-  color: rgba(255,255,255,0.8);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  margin-bottom: 2px;
+  font-family: 'Rajdhani', sans-serif; font-size: 12.5px; font-weight: 500;
+  color: rgba(255,255,255,0.8); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px;
 }
-.history-meta {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 9px; color: rgba(255,255,255,0.25); letter-spacing: .04em;
-}
-.history-empty {
-  padding: 20px 14px; text-align: center;
-  font-family: 'Rajdhani', sans-serif; font-size: 11.5px;
-  color: rgba(255,255,255,0.25); font-style: italic;
-}
+.history-meta { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: rgba(255,255,255,0.25); letter-spacing: .04em; }
+.history-empty { padding: 20px 14px; text-align: center; font-family: 'Rajdhani', sans-serif; font-size: 11.5px; color: rgba(255,255,255,0.25); font-style: italic; }
 
 .talk-main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .talk-messages {
-  flex: 1; overflow-y: auto;
-  padding: 18px 22px;
+  flex: 1; overflow-y: auto; padding: 18px 22px;
   display: flex; flex-direction: column; gap: 14px;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255,255,255,0.08) transparent;
+  scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.08) transparent;
 }
 .talk-messages::-webkit-scrollbar { width: 3px; }
 .talk-messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
@@ -472,28 +408,18 @@ body.ws-open .mod.active { z-index: 70; }
 .talk-msg.user { align-self: flex-end; }
 .talk-msg.theia { align-self: flex-start; }
 @keyframes msgIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
-.talk-msg-label {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 9px; letter-spacing: .12em; text-transform: uppercase;
-  color: rgba(255,255,255,0.25);
-}
+.talk-msg-label { font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: .12em; text-transform: uppercase; color: rgba(255,255,255,0.25); }
 .talk-msg.user .talk-msg-label { text-align: right; }
 .talk-msg-bubble {
   padding: 11px 15px; border-radius: 12px;
-  font-family: 'Rajdhani', sans-serif;
-  font-size: 14px; line-height: 1.55;
-  color: rgba(255,255,255,0.85);
-  word-break: break-word;
+  font-family: 'Rajdhani', sans-serif; font-size: 14px; line-height: 1.55;
+  color: rgba(255,255,255,0.85); word-break: break-word;
 }
 .talk-msg.user .talk-msg-bubble {
-  background: rgba(199,125,255,0.1);
-  border: 1px solid rgba(199,125,255,0.2);
-  border-bottom-right-radius: 4px;
+  background: rgba(199,125,255,0.1); border: 1px solid rgba(199,125,255,0.2); border-bottom-right-radius: 4px;
 }
 .talk-msg.theia .talk-msg-bubble {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.07);
-  border-bottom-left-radius: 4px;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); border-bottom-left-radius: 4px;
 }
 .typing-dots span {
   display:inline-block; width:4px; height:4px; border-radius:50%;
@@ -508,54 +434,36 @@ body.ws-open .mod.active { z-index: 70; }
 }
 
 .talk-input-area {
-  padding: 14px 18px 16px;
-  border-top: 1px solid rgba(255,255,255,0.06);
-  display: flex; gap: 10px; align-items: flex-end;
-  flex-shrink: 0;
+  padding: 14px 18px 16px; border-top: 1px solid rgba(255,255,255,0.06);
+  display: flex; gap: 10px; align-items: flex-end; flex-shrink: 0;
 }
 .talk-input {
-  flex: 1;
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 10px;
-  padding: 11px 14px;
-  font-family: 'Rajdhani', sans-serif;
+  flex: 1; background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08); border-radius: 10px;
+  padding: 11px 14px; font-family: 'Rajdhani', sans-serif;
   font-size: 14px; color: rgba(255,255,255,0.85);
-  resize: none; outline: none;
-  max-height: 120px; min-height: 42px;
-  line-height: 1.45; transition: border-color 0.2s;
-  scrollbar-width: none;
+  resize: none; outline: none; max-height: 120px; min-height: 42px;
+  line-height: 1.45; transition: border-color 0.2s; scrollbar-width: none;
 }
 .talk-input::placeholder { color: rgba(255,255,255,0.22); }
 .talk-input:focus { border-color: rgba(199,125,255,0.35); }
 .talk-send {
   width: 42px; height: 42px; border-radius: 10px;
   background: linear-gradient(135deg, rgba(199,125,255,0.2) 0%, rgba(199,125,255,0.08) 100%);
-  border: 1px solid rgba(199,125,255,0.3);
-  cursor: pointer; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
-  transition: all 0.2s;
+  border: 1px solid rgba(199,125,255,0.3); cursor: pointer; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; transition: all 0.2s;
 }
-.talk-send:hover {
-  background: linear-gradient(135deg, rgba(199,125,255,0.3) 0%, rgba(199,125,255,0.15) 100%);
-  border-color: rgba(199,125,255,0.5);
-  transform: translateY(-1px);
-}
+.talk-send:hover { background: linear-gradient(135deg, rgba(199,125,255,0.3) 0%, rgba(199,125,255,0.15) 100%); border-color: rgba(199,125,255,0.5); transform: translateY(-1px); }
 .talk-send svg { width: 16px; height: 16px; fill: none; stroke: rgba(255,255,255,0.85); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
 /* ========== WOLFSTREET WORKSPACE ========== */
 .wolf-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 .wolf-summary-bar { display: flex; gap: 12px; padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); flex-shrink: 0; }
 .wolf-summary-card {
-  flex: 1; padding: 12px 14px;
-  background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 9px; min-width: 0;
+  flex: 1; padding: 12px 14px; background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.06); border-radius: 9px; min-width: 0;
 }
-.wolf-summary-card.urgent {
-  background: linear-gradient(135deg, rgba(232, 184, 109, 0.08) 0%, rgba(232, 184, 109, 0.02) 100%);
-  border-color: rgba(232, 184, 109, 0.25);
-}
+.wolf-summary-card.urgent { background: linear-gradient(135deg, rgba(232, 184, 109, 0.08) 0%, rgba(232, 184, 109, 0.02) 100%); border-color: rgba(232, 184, 109, 0.25); }
 .wolf-summary-label { font-family: 'JetBrains Mono', monospace; font-size: 8.5px; letter-spacing: .15em; text-transform: uppercase; color: rgba(255,255,255,0.35); margin-bottom: 5px; }
 .wolf-summary-value { font-family: 'Orbitron', sans-serif; font-size: 17px; font-weight: 700; color: rgba(255,255,255,0.92); }
 .wolf-summary-card.urgent .wolf-summary-value { color: #E8B86D; }
@@ -563,11 +471,9 @@ body.ws-open .mod.active { z-index: 70; }
 
 .wolf-tabs { display: flex; gap: 2px; padding: 0 20px; border-bottom: 1px solid rgba(255,255,255,0.05); flex-shrink: 0; }
 .wolf-tab {
-  padding: 10px 16px; background: transparent;
-  border: none; border-bottom: 2px solid transparent;
-  color: rgba(255,255,255,0.4);
-  font-family: 'Orbitron', sans-serif; font-size: 9.5px; font-weight: 600; letter-spacing: .15em; text-transform: uppercase;
-  cursor: pointer; transition: all 0.2s;
+  padding: 10px 16px; background: transparent; border: none; border-bottom: 2px solid transparent;
+  color: rgba(255,255,255,0.4); font-family: 'Orbitron', sans-serif; font-size: 9.5px; font-weight: 600;
+  letter-spacing: .15em; text-transform: uppercase; cursor: pointer; transition: all 0.2s;
 }
 .wolf-tab:hover { color: rgba(255,255,255,0.7); }
 .wolf-tab.active { color: #E8B86D; border-bottom-color: #E8B86D; }
@@ -580,11 +486,8 @@ body.ws-open .mod.active { z-index: 70; }
 .wolf-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
 
 .invoice-row {
-  display: flex; align-items: center; gap: 14px;
-  padding: 12px 14px; margin-bottom: 6px;
-  background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(255,255,255,0.05);
-  border-radius: 9px; transition: all 0.2s;
+  display: flex; align-items: center; gap: 14px; padding: 12px 14px; margin-bottom: 6px;
+  background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 9px; transition: all 0.2s;
 }
 .invoice-row:hover { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.1); }
 .invoice-row.urgent { border-color: rgba(232, 184, 109, 0.3); background: linear-gradient(90deg, rgba(232, 184, 109, 0.06) 0%, rgba(255,255,255,0.02) 100%); }
@@ -609,18 +512,14 @@ body.ws-open .mod.active { z-index: 70; }
 .wolf-empty-banner-text strong { color: #E8B86D; font-weight: 600; }
 
 /* ========== SKELETON WORKSPACE ========== */
-.skeleton-content {
-  flex: 1; display: flex; align-items: center; justify-content: center;
-  flex-direction: column; padding: 40px;
-}
+.skeleton-content { flex: 1; display: flex; align-items: center; justify-content: center; flex-direction: column; padding: 40px; }
 .skeleton-icon {
   width: 80px; height: 80px; border-radius: 18px;
   background: linear-gradient(135deg, var(--ws-col, #7C6EF5) 0%, var(--ws-col2, #5a4fd4) 100%);
   box-shadow: 0 8px 40px var(--ws-glow, rgba(124,110,245,0.4));
   display: flex; align-items: center; justify-content: center;
   font-family: 'Orbitron', sans-serif; font-size: 32px; font-weight: 700;
-  color: rgba(255,255,255,0.95);
-  margin-bottom: 24px; position: relative; overflow: hidden;
+  color: rgba(255,255,255,0.95); margin-bottom: 24px; position: relative; overflow: hidden;
   animation: skeletonPulse 3s ease-in-out infinite;
 }
 .skeleton-icon svg { width: 44px; height: 44px; color: rgba(255,255,255,0.95); }
@@ -653,6 +552,114 @@ body.ws-open .mod.active { z-index: 70; }
   .talk-messages { padding: 12px 14px; }
   .talk-msg { max-width: 90%; }
   .talk-input-area { padding: 10px 12px; }
+}
+
+/* ========== PORTRAIT MOBILE (dikey) ========== */
+@media (max-width: 600px) and (orientation: portrait),
+       (max-height: 700px) and (max-width: 500px) {
+
+  html, body { overflow: hidden; height: 100%; width: 100%; }
+  canvas { position: fixed !important; }
+
+  #hud-top { padding: 0 12px; height: 36px; z-index: 30; }
+  .hud-left, .hud-right { gap: 8px; }
+  .hud-item { font-size: 7.5px; }
+  .hud-line { display: none; }
+
+  #corelabel {
+    display: block; font-size: 11px; letter-spacing: .25em;
+    margin-top: 60px; color: rgba(255,255,255,0.12);
+    text-shadow: 0 0 30px rgba(124,110,245,0.15);
+  }
+  #corelabel span { font-size: 8px; letter-spacing: .3em; color: rgba(255,255,255,0.06); }
+
+  #statusbar { bottom: 10px; font-size: 8px; gap: 8px; letter-spacing: .12em; }
+  #drag-hint { display: none; }
+
+  #overlay { position: fixed; top:0; left:0; right:0; bottom:0; overflow:visible; pointer-events:none; z-index:10; }
+
+  /* Daha küçük, yarı saydam */
+  .mod {
+    width: 150px !important;
+    padding: 12px 14px !important;
+    border-radius: 12px !important;
+    background: linear-gradient(145deg, rgba(255,255,255,0.025) 0%, rgba(255,255,255,0.005) 100%) !important;
+    backdrop-filter: blur(14px) saturate(1.2) !important;
+    -webkit-backdrop-filter: blur(14px) saturate(1.2) !important;
+    border: 1px solid rgba(255,255,255,0.06) !important;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.04) !important;
+    transform: translate(-50%,-50%) !important;
+    transform-style: flat !important;
+  }
+  .mod::before { opacity: 0.3 !important; }
+  .mod::after { display: none !important; }
+
+  .mod:hover {
+    transform: translate(-50%,-50%) scale(1.03) !important;
+    background: linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.015) 100%) !important;
+    border-color: rgba(255,255,255,0.15) !important;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.45), 0 0 30px var(--glow, rgba(124,110,245,0.2)) !important;
+  }
+  .mod.active {
+    transform: translate(-50%,-50%) scale(1.03) !important;
+    background: linear-gradient(145deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.02) 100%) !important;
+    border-color: var(--col, rgba(124,110,245,0.5)) !important;
+    box-shadow: 0 0 50px var(--glow, rgba(124,110,245,0.3)), 0 0 80px var(--glow2, rgba(124,110,245,0.1)) !important;
+  }
+  .mod.dragging { transform: translate(-50%,-50%) scale(0.95) !important; opacity: 0.5 !important; }
+  .mod.drop-target { transform: translate(-50%,-50%) scale(1.05) !important; }
+
+  .mod-header { gap: 8px; }
+  .mod-icon { width: 26px; height: 26px; font-size: 9px; border-radius: 7px; }
+  .mod-name { font-size: 9px; letter-spacing: .08em; }
+  .mod-sub { font-size: 10px; margin-top: 3px; padding-left: 34px; }
+  .mod-bar-wrap { margin-top: 8px; }
+  .mod-stats { opacity: 1 !important; transform: none !important; padding-left: 34px; margin-top: 4px; }
+  .mod-stat { font-size: 7.5px; }
+
+  #workspace {
+    position: fixed !important; left: 0 !important; right: 0 !important;
+    top: 0 !important; bottom: 0 !important; border-radius: 0 !important;
+    border-left: none !important; border-right: none !important; z-index: 200 !important;
+  }
+  body.ws-open #overlay { pointer-events: none; }
+  body.ws-open .mod { display: none; }
+  body.ws-open #c { transform: none !important; }
+  body.ws-open #corelabel { display: none; }
+
+  #ws-header { padding: 12px 14px; }
+  #ws-icon { width: 30px; height: 30px; border-radius: 8px; }
+  #ws-title { font-size: 12px; letter-spacing: .1em; }
+  #ws-sub { font-size: 11px; }
+  #ws-close { width: 32px; height: 32px; border-radius: 8px; }
+
+  .talk-history { display: none !important; }
+  .talk-main { width: 100%; }
+  .talk-messages { padding: 10px 12px; gap: 10px; }
+  .talk-msg { max-width: 92%; }
+  .talk-msg-bubble { padding: 9px 12px; font-size: 13px; }
+  .talk-input-area { padding: 8px 10px 10px; gap: 8px; }
+  .talk-input { font-size: 13px; padding: 9px 11px; min-height: 38px; }
+  .talk-send { width: 38px; height: 38px; border-radius: 9px; }
+
+  .wolf-summary-bar { flex-direction: column; gap: 8px; padding: 12px 14px; }
+  .wolf-summary-card { padding: 10px 12px; }
+  .wolf-summary-value { font-size: 15px; }
+  .wolf-tab { padding: 8px 10px; font-size: 8.5px; }
+  .wolf-list { padding: 10px 14px 16px; }
+  .invoice-row { padding: 10px 10px; gap: 10px; }
+  .invoice-name { font-size: 12.5px; }
+  .invoice-amount { font-size: 13px; }
+
+  .skeleton-content { padding: 24px 16px; }
+  .skeleton-icon { width: 60px; height: 60px; border-radius: 14px; margin-bottom: 16px; }
+  .skeleton-icon svg { width: 32px; height: 32px; }
+  .skeleton-title { font-size: 17px; letter-spacing: .14em; }
+  .skeleton-sub { font-size: 12px; margin-bottom: 20px; }
+  .skeleton-tag { font-size: 9px; padding: 6px 14px; margin-bottom: 24px; }
+  .skeleton-stats { gap: 10px; flex-wrap: wrap; justify-content: center; }
+  .skeleton-stat { padding: 10px 14px; min-width: 80px; }
+  .skeleton-stat-value { font-size: 15px; }
 }
 </style>
 </head>
@@ -776,7 +783,6 @@ function drawBg() {
     bc.fillStyle = ng; bc.fillRect(0, 0, W, H);
   });
 
-  // Perspektif grid
   const vx = cx, vy = cy * 0.42;
   bc.strokeStyle = 'rgba(124,110,245,0.04)';
   bc.lineWidth = 0.5;
@@ -823,12 +829,59 @@ function drawStars() {
 }
 
 // ========== MODULES ==========
+function isMobilePortrait() {
+  return window.innerWidth <= 600 && window.innerHeight > window.innerWidth;
+}
+
 function layoutMods() {
   const orb = Math.min(W, H) * 0.38;
+  const mobile = isMobilePortrait();
+
+  if (mobile) {
+    const marginX = 16;
+    const hudBottom = 46;             // HUD altı + üst boşluk
+    const statusTop = 30;             // statusbar üst boşluğu
+    const modW = 150;                 // CSS'teki mobil mod genişliği
+    const modH = 110;                 // tahmini mod yüksekliği
+    const gap = 10;
+    const halfW = modW / 2;
+    const halfH = modH / 2;
+
+    const leftX = marginX + halfW;
+    const rightX = W - marginX - halfW;
+
+    const topY1 = hudBottom + halfH;
+    const topY2 = topY1 + modH + gap;
+
+    const bottomY2 = H - statusTop - halfH;
+    const bottomY1 = bottomY2 - modH - gap;
+
+    const positions = [
+      { bx: leftX,  by: topY1 },     // sol üst 1
+      { bx: leftX,  by: topY2 },     // sol üst 2
+      { bx: rightX, by: topY1 },     // sağ üst 1
+      { bx: rightX, by: topY2 },     // sağ üst 2
+      { bx: leftX,  by: bottomY1 },  // sol alt 1
+      { bx: leftX,  by: bottomY2 },  // sol alt 2
+      { bx: rightX, by: bottomY1 },  // sağ alt 1
+      { bx: rightX, by: bottomY2 },  // sağ alt 2
+    ];
+
+    MODS.forEach((m, i) => {
+      if (i < positions.length) {
+        m.bx = positions[i].bx;
+        m.by = positions[i].by;
+      }
+    });
+  } else {
+    MODS.forEach(m => {
+      const rad = (m.angle - 90) * Math.PI / 180;
+      m.bx = cx + orb * Math.cos(rad);
+      m.by = cy + orb * Math.sin(rad);
+    });
+  }
+
   MODS.forEach(m => {
-    const rad = (m.angle - 90) * Math.PI / 180;
-    m.bx = cx + orb * Math.cos(rad);
-    m.by = cy + orb * Math.sin(rad);
     let el = document.getElementById('m-' + m.id);
     if (!el) {
       el = document.createElement('div');
@@ -1072,7 +1125,6 @@ function draw() {
 
   const orb = Math.min(W, H) * 0.38;
 
-  // Orbit ring (statik)
   ctx.beginPath(); ctx.arc(cx, cy, orb, 0, Math.PI * 2);
   ctx.strokeStyle = 'rgba(255,255,255,0.02)'; ctx.lineWidth = 0.5; ctx.stroke();
 
@@ -1092,7 +1144,6 @@ function draw() {
   ctx.beginPath(); ctx.arc(cx, cy, R * 0.85, 0, Math.PI * 2);
   ctx.strokeStyle = 'rgba(140,110,240,0.03)'; ctx.lineWidth = 0.5; ctx.stroke();
 
-  // Modül ↔ merkez veri akış çizgileri
   MODS.forEach(m => {
     const isActive = activeModule === m;
     const isFaded  = activeModule && !isActive;
@@ -1108,7 +1159,6 @@ function draw() {
     ctx.strokeStyle = `rgba(${r},${g},${b},${baseAlpha * 0.3})`;
     ctx.lineWidth = isActive ? 4 : 2; ctx.stroke();
 
-    // Akan nokta 1
     if (!m._flowProg) m._flowProg = Math.random();
     m._flowProg += isActive ? 0.012 : 0.006;
     if (m._flowProg > 1) m._flowProg = 0;
@@ -1122,7 +1172,6 @@ function draw() {
     ctx.beginPath(); ctx.arc(fpx, fpy, isActive ? 2 : 1.3, 0, Math.PI*2);
     ctx.fillStyle = `rgba(${r},${g},${b},${da})`; ctx.fill();
 
-    // Akan nokta 2 (offset)
     const fp2  = (m._flowProg + 0.5) % 1;
     const fpx2 = m.bx + (cx - m.bx) * fp2;
     const fpy2 = m.by + (cy - m.by) * fp2;
@@ -1134,7 +1183,6 @@ function draw() {
     ctx.fillStyle = `rgba(${r},${g},${b},${da2})`; ctx.fill();
   });
 
-  // Node hareketi
   nodes.forEach(n => {
     n.x += n.vx; n.y += n.vy;
     const dx = n.x - cx, dy = n.y - cy;
@@ -1149,7 +1197,6 @@ function draw() {
     if (n.fire > 0) n.fire -= .012;
   });
 
-  // Synapses
   synapses.forEach(s => {
     const a = nodes[s.a], b = nodes[s.b];
     const avgZ = (a.z + b.z) / (R * 2) + .5;
@@ -1177,7 +1224,6 @@ function draw() {
     n.fire = .6 + Math.random() * .3; n.fireCol = null;
   }
 
-  // Node render (derinliğe göre sıralı)
   const sortedNodes = [...nodes].sort((a, b) => a.z - b.z);
   sortedNodes.forEach(n => {
     const depth = (n.z / R + 1) * .5;
@@ -1204,7 +1250,6 @@ function draw() {
     }
   });
 
-  // Çekirdek ışıması
   for (let i = 4; i >= 1; i--) {
     const ox = cx - R * .1, oy = cy - R * .15;
     const gr = ctx.createRadialGradient(ox, oy, R * .04 * i, cx, cy, R * (.5 + i * .18));
@@ -1228,7 +1273,6 @@ function draw() {
   ctx.strokeStyle = `rgba(180,160,255,${0.08 + Math.sin(t) * 0.03})`;
   ctx.lineWidth = 1.5; ctx.stroke();
 
-  // Particles
   particles = particles.filter(p => {
     if (p.delay > 0) { p.delay--; return true; }
     p.prog = Math.min(1, p.prog + p.speed);
@@ -1418,7 +1462,7 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && currentWsModule) closeWorkspace();
 });
 
-// ========== TALK/CHAT WORKSPACE (paylaşılan render, ayrı mod) ==========
+// ========== TALK/CHAT WORKSPACE ==========
 function renderTalkWorkspace(convList, activeCid, setActiveId, mode) {
   const isTalk = mode === 'talk';
   wsBody.innerHTML = `
@@ -1507,7 +1551,6 @@ function renderConvList(convList, activeCid, setActiveId) {
   list.querySelectorAll('.history-item').forEach(el => {
     el.addEventListener('click', () => {
       setActiveId(el.dataset.id);
-      // activeCid lokal değişkeni güncellenmez ama render için yeterli
       list.querySelectorAll('.history-item').forEach(e => e.classList.remove('active'));
       el.classList.add('active');
       renderConvMessages(convList, el.dataset.id);
@@ -1555,13 +1598,12 @@ async function doSend(convList, activeCid, mode) {
     let reply;
 
     if (mode === 'talk') {
-      // Anthropic API — kullanıcının key'i
       const apiKey = getApiKey();
       if (!apiKey) throw new Error('API key bulunamadı — KEY ⚙ butonundan gir');
 
       const history = conv.messages
         .filter(m => m.role !== 'theia' || conv.messages.indexOf(m) > 0)
-        .slice(0, -1) // son user mesajı zaten eklenmiş, history'ye gerek yok
+        .slice(0, -1)
         .map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text }));
 
       const r = await fetch('https://api.anthropic.com/v1/messages', {
@@ -1590,7 +1632,6 @@ async function doSend(convList, activeCid, mode) {
       reply = data.content?.[0]?.text || JSON.stringify(data);
 
     } else {
-      // Chat modu — localhost Theia backend
       const r = await fetch('http://localhost:8585/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1757,3 +1798,5 @@ function escapeHtml(s) {
 </script>
 </body>
 </html>
+```
+

@@ -25,7 +25,7 @@ Dil: Türkçe.
 - Python 3.13
 - python-telegram-bot 22.7 (Telegram bot için)
 - FastAPI + uvicorn (HTTP API için)
-- Anthropic Claude API (claude-sonnet-4-5 ana model, claude-haiku-4-5-20251001 memory için)
+- Anthropic Claude API (claude-sonnet-4-6 ana model, claude-haiku-4-5-20251001 memory için)
 - SQLite (~/theia/theia.db)
 - edge-tts (TTS için, sadece api.py)
 - vosk + PyAudio (sadece voice.py, yerel kullanım, Render'a deploy edilmez)
@@ -56,3 +56,4 @@ Dil: Türkçe.
 - theia.db'ye şema değişikliği öncesi sor
 - Gereksiz bağımlılık ekleme
 - Tek dosyayı düzenle, tüm projeyi yeniden yazma
+- Vault'a yazmak için vault_api kullan, eski memory klasörüne yazma

@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Theia — Mimari Harita v0.8</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=JetBrains+Mono:wght@300;400;500&family=Rajdhani:wght@300;400;500;600&display=swap');
+
+:root {
+  --bg: #03020a;
+  --surface: rgba(255,255,255,0.03);
+  --border: rgba(255,255,255,0.07);
+  --text: rgba(255,255,255,0.85);
+  --muted: rgba(255,255,255,0.35);
+  --dim: rgba(255,255,255,0.12);
+  --purple: #7C6EF5;
+  --green: #1D9E75;
+  --orange: #EF9F27;
+  --red: #E85D24;
+  --blue: #4FA8D5;
+  --pink: #C77DFF;
+  --gold: #E8B86D;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 15px;
+  line-height: 1.7;
+  min-height: 100vh;
+}
+body::before {
+  content:'';
+  position:fixed; inset:0;
+  background:
+    radial-gradient(ellipse at 10% 15%, rgba(124,110,245,0.07) 0%, transparent 50%),
+    radial-gradient(ellipse at 90% 80%, rgba(29,158,117,0.04) 0%, transparent 45%),
+    radial-gradient(ellipse at 50% 50%, rgba(10,6,25,1) 0%, transparent 80%);
+  pointer-events:none; z-index:0;
+}
+
+.container { max-width:1120px; margin:0 auto; padding:52px 28px; position:relative; z-index:1; }
+
+/* ─── HEADER ─── */
+.header { text-align:center; margin-bottom:64px; padding-bottom:40px; border-bottom:1px solid var(--border); position:relative; }
+.header::after { content:''; position:absolute; bottom:-1px; left:50%; transform:translateX(-50%); width:180px; height:1px; background:linear-gradient(90deg,transparent,var(--purple),transparent); }
+.eyebrow { font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:.38em; color:var(--purple); text-transform:uppercase; margin-bottom:16px; display:flex; align-items:center; justify-content:center; gap:12px; }
+.eyebrow::before,.eyebrow::after { content:''; width:36px; height:1px; background:linear-gradient(90deg,transparent,var(--purple)); }
+.eyebrow::after { transform:scaleX(-1); }
+h1 { font-family:'Orbitron',sans-serif; font-size:clamp(26px,4.5vw,44px); font-weight:900; letter-spacing:.1em; color:#fff; text-shadow:0 0 60px rgba(124,110,245,0.4); margin-bottom:10px; }
+h1 span { color:var(--purple); }
+.header-sub { font-size:15px; color:var(--muted); letter-spacing:.05em; margin-bottom:28px; }
+.badges { display:flex; gap:7px; justify-content:center; flex-wrap:wrap; }
+.badge-item { font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:.1em; padding:4px 13px; border-radius:20px; border:1px solid var(--border); background:var(--surface); color:var(--muted); }
+.badge-item.on { border-color:rgba(29,158,117,0.4); color:var(--green); background:rgba(29,158,117,0.07); }
+.badge-item.warn { border-color:rgba(239,159,39,0.35); color:var(--orange); background:rgba(239,159,39,0.06); }
+
+/* ─── SECTION ─── */
+.section { margin-bottom:60px; }
+.sec-title { font-family:'Orbitron',sans-serif; font-size:10px; font-weight:600; letter-spacing:.3em; color:var(--muted); text-transform:uppercase; margin-bottom:22px; display:flex; align-items:center; gap:13px; }
+.sec-title::after { content:''; flex:1; height:1px; background:linear-gradient(90deg,var(--border),transparent); }
+.sec-num { width:22px; height:22px; border-radius:5px; background:var(--surface); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:8px; color:var(--dim); }
+
+/* ─── GRAPH MAP ─── */
+.graph-wrap { position:relative; width:100%; height:520px; background:var(--surface); border:1px solid var(--border); border-radius:18px; overflow:hidden; }
+.graph-wrap svg { position:absolute; inset:0; width:100%; height:100%; }
+.graph-node { position:absolute; transform:translate(-50%,-50%); cursor:default; }
+.gn-box {
+  padding:10px 16px; border-radius:11px; border:1px solid var(--border);
+  background:linear-gradient(145deg,rgba(255,255,255,0.055),rgba(255,255,255,0.015));
+  backdrop-filter:blur(12px);
+  text-align:center; white-space:nowrap;
+  transition:all 0.3s cubic-bezier(0.23,1,0.32,1);
+  box-shadow:0 4px 20px rgba(0,0,0,0.4);
+}
+.gn-box:hover { transform:translateY(-3px) scale(1.06); box-shadow:0 8px 32px rgba(0,0,0,0.5), 0 0 40px var(--nc,rgba(124,110,245,0.2)); border-color:var(--nc,rgba(124,110,245,0.4)); }
+.gn-label { font-family:'Orbitron',sans-serif; font-size:9px; font-weight:700; letter-spacing:.18em; text-transform:uppercase; }
+.gn-sub { font-family:'JetBrains Mono',monospace; font-size:8px; color:var(--muted); letter-spacing:.06em; margin-top:2px; }
+/* node colors */
+.gn-purple .gn-box { border-color:rgba(124,110,245,0.35); background:rgba(124,110,245,0.1); --nc:rgba(124,110,245,0.4); }
+.gn-purple .gn-label { color:var(--purple); }
+.gn-green  .gn-box { border-color:rgba(29,158,117,0.35); background:rgba(29,158,117,0.09); --nc:rgba(29,158,117,0.4); }
+.gn-green  .gn-label { color:var(--green); }
+.gn-orange .gn-box { border-color:rgba(239,159,39,0.35); background:rgba(239,159,39,0.08); --nc:rgba(239,159,39,0.4); }
+.gn-orange .gn-label { color:var(--orange); }
+.gn-red    .gn-box { border-color:rgba(232,93,36,0.35); background:rgba(232,93,36,0.08); --nc:rgba(232,93,36,0.4); }
+.gn-red    .gn-label { color:var(--red); }
+.gn-blue   .gn-box { border-color:rgba(79,168,213,0.35); background:rgba(79,168,213,0.09); --nc:rgba(79,168,213,0.4); }
+.gn-blue   .gn-label { color:var(--blue); }
+.gn-pink   .gn-box { border-color:rgba(199,125,255,0.35); background:rgba(199,125,255,0.09); --nc:rgba(199,125,255,0.4); }
+.gn-pink   .gn-label { color:var(--pink); }
+.gn-gold   .gn-box { border-color:rgba(232,184,109,0.35); background:rgba(232,184,109,0.08); --nc:rgba(232,184,109,0.4); }
+.gn-gold   .gn-label { color:var(--gold); }
+.gn-core .gn-box {
+  padding:16px 22px; border-radius:14px;
+  border-color:rgba(124,110,245,0.5);
+  background:radial-gradient(circle,rgba(124,110,245,0.18),rgba(124,110,245,0.06));
+  box-shadow:0 0 60px rgba(124,110,245,0.25), 0 0 120px rgba(124,110,245,0.08);
+  animation:corePulse 3s ease-in-out infinite;
+}
+@keyframes corePulse {
+  0%,100% { box-shadow:0 0 60px rgba(124,110,245,0.25),0 0 120px rgba(124,110,245,0.08); }
+  50% { box-shadow:0 0 80px rgba(124,110,245,0.35),0 0 160px rgba(124,110,245,0.12); }
+}
+.gn-core .gn-label { font-size:13px; color:#fff; letter-spacing:.25em; }
+.gn-core .gn-sub { font-size:9px; color:rgba(124,110,245,0.7); }
+
+/* edge tooltip */
+.graph-tooltip {
+  position:absolute; pointer-events:none; z-index:99;
+  background:rgba(10,6,25,0.92); border:1px solid rgba(124,110,245,0.3);
+  border-radius:8px; padding:7px 12px;
+  font-family:'JetBrains Mono',monospace; font-size:10px; color:rgba(255,255,255,0.7);
+  letter-spacing:.06em; backdrop-filter:blur(12px);
+  opacity:0; transition:opacity 0.2s;
+  white-space:nowrap;
+}
+
+/* ─── FLOW ─── */
+.flow-wrap { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:28px; overflow-x:auto; }
+.flow { display:flex; align-items:center; gap:0; min-width:680px; flex-wrap:wrap; row-gap:20px; }
+.fn { flex-shrink:0; padding:9px 15px; border-radius:9px; border:1px solid var(--border); background:rgba(255,255,255,0.025); text-align:center; }
+.fn-label { font-family:'Orbitron',monospace; font-size:8px; letter-spacing:.15em; color:var(--dim); text-transform:uppercase; margin-bottom:3px; }
+.fn-name { font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--text); font-weight:500; }
+.fn.hi { border-color:rgba(124,110,245,0.4); background:rgba(124,110,245,0.08); } .fn.hi .fn-name { color:var(--purple); }
+.fn.gr { border-color:rgba(29,158,117,0.4); background:rgba(29,158,117,0.07); } .fn.gr .fn-name { color:var(--green); }
+.fn.or { border-color:rgba(239,159,39,0.35); background:rgba(239,159,39,0.07); } .fn.or .fn-name { color:var(--orange); }
+.fn.pk { border-color:rgba(199,125,255,0.35); background:rgba(199,125,255,0.08); } .fn.pk .fn-name { color:var(--pink); }
+.fa { flex-shrink:0; padding:0 7px; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--dim); display:flex; flex-direction:column; align-items:center; gap:2px; }
+.fa-lbl { font-size:7.5px; letter-spacing:.08em; color:var(--dim); white-space:nowrap; }
+
+/* ─── ARCH GRID ─── */
+.arch-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:14px; }
+.arch-card { background:var(--surface); border:1px solid var(--border); border-radius:13px; padding:20px; position:relative; overflow:hidden; transition:border-color 0.3s,box-shadow 0.3s; }
+.arch-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; border-radius:13px 13px 0 0; opacity:.7; }
+.arch-card:hover { box-shadow:0 8px 32px rgba(0,0,0,0.3); }
+.ac-purple::before { background:linear-gradient(90deg,var(--purple),transparent); } .ac-purple:hover { border-color:rgba(124,110,245,0.3); box-shadow:0 8px 32px rgba(124,110,245,0.15); }
+.ac-blue::before   { background:linear-gradient(90deg,var(--blue),transparent); }   .ac-blue:hover   { border-color:rgba(79,168,213,0.3); }
+.ac-green::before  { background:linear-gradient(90deg,var(--green),transparent); }  .ac-green:hover  { border-color:rgba(29,158,117,0.3); }
+.ac-orange::before { background:linear-gradient(90deg,var(--orange),transparent); } .ac-orange:hover { border-color:rgba(239,159,39,0.3); }
+.ac-red::before    { background:linear-gradient(90deg,var(--red),transparent); }    .ac-red:hover    { border-color:rgba(232,93,36,0.3); }
+.ac-pink::before   { background:linear-gradient(90deg,var(--pink),transparent); }   .ac-pink:hover   { border-color:rgba(199,125,255,0.3); }
+.ac-gold::before   { background:linear-gradient(90deg,var(--gold),transparent); }   .ac-gold:hover   { border-color:rgba(232,184,109,0.3); }
+.arch-card-header { display:flex; align-items:center; gap:10px; margin-bottom:13px; }
+.arch-icon { width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; }
+.ac-purple .arch-icon{background:rgba(124,110,245,0.15);} .ac-blue .arch-icon{background:rgba(79,168,213,0.15);}
+.ac-green .arch-icon{background:rgba(29,158,117,0.15);}   .ac-orange .arch-icon{background:rgba(239,159,39,0.15);}
+.ac-red .arch-icon{background:rgba(232,93,36,0.15);}      .ac-pink .arch-icon{background:rgba(199,125,255,0.15);}
+.ac-gold .arch-icon{background:rgba(232,184,109,0.15);}
+.arch-card-title { font-family:'Orbitron',sans-serif; font-size:10px; font-weight:600; letter-spacing:.18em; text-transform:uppercase; }
+.ac-purple .arch-card-title{color:var(--purple);} .ac-blue .arch-card-title{color:var(--blue);}
+.ac-green .arch-card-title{color:var(--green);}   .ac-orange .arch-card-title{color:var(--orange);}
+.ac-red .arch-card-title{color:var(--red);}        .ac-pink .arch-card-title{color:var(--pink);}
+.ac-gold .arch-card-title{color:var(--gold);}
+.arch-card-sub { font-size:11px; color:var(--muted); letter-spacing:.03em; }
+.arch-files { display:flex; flex-direction:column; gap:4px; }
+.arch-file { display:flex; align-items:center; justify-content:space-between; padding:5px 9px; border-radius:6px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.04); }
+.arch-file-name { font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--text); }
+.arch-file-name.dim { color:var(--muted); text-decoration:line-through; }
+.arch-file-lines { font-family:'JetBrains Mono',monospace; font-size:8.5px; color:var(--dim); }
+.arch-deps { margin-top:11px; padding-top:11px; border-top:1px solid var(--border); }
+.arch-deps-label { font-family:'JetBrains Mono',monospace; font-size:8.5px; letter-spacing:.15em; color:var(--dim); text-transform:uppercase; margin-bottom:6px; }
+.arch-dep-tags { display:flex; flex-wrap:wrap; gap:4px; }
+.arch-dep-tag { font-family:'JetBrains Mono',monospace; font-size:8.5px; padding:2px 7px; border-radius:4px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); color:var(--muted); }
+
+/* ─── CALL CHAIN ─── */
+.call-chain { background:rgba(0,0,0,0.3); border:1px solid var(--border); border-radius:12px; padding:22px; font-family:'JetBrains Mono',monospace; font-size:11.5px; line-height:2; overflow-x:auto; }
+.cc-entry{color:var(--purple);} .cc-handler{color:var(--blue);} .cc-agent{color:var(--green);}
+.cc-db{color:var(--orange);}    .cc-api{color:var(--pink);}      .cc-comment{color:var(--dim);font-style:italic;}
+.cc-arrow{color:var(--dim);}
+
+/* ─── DB TABLE ─── */
+.data-table { width:100%; border-collapse:collapse; font-size:13px; }
+.data-table thead tr { border-bottom:1px solid var(--border); }
+.data-table th { font-family:'JetBrains Mono',monospace; font-size:8.5px; letter-spacing:.2em; color:var(--muted); text-transform:uppercase; text-align:left; padding:7px 13px; font-weight:400; }
+.data-table td { padding:9px 13px; border-bottom:1px solid rgba(255,255,255,0.025); vertical-align:top; }
+.data-table tr:last-child td { border-bottom:none; }
+.data-table tr:hover td { background:rgba(255,255,255,0.015); }
+.mono { font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--blue); }
+.muted-cell { color:var(--muted); font-size:12px; }
+
+/* ─── BADGES ─── */
+.bx { display:inline-flex; align-items:center; gap:5px; font-family:'JetBrains Mono',monospace; font-size:8.5px; letter-spacing:.1em; text-transform:uppercase; padding:3px 8px; border-radius:4px; }
+.bx-dot { width:5px; height:5px; border-radius:50%; }
+.bx-ok   { background:rgba(29,158,117,0.12); border:1px solid rgba(29,158,117,0.3); color:var(--green); }  .bx-ok .bx-dot   { background:var(--green); box-shadow:0 0 4px var(--green); }
+.bx-wip  { background:rgba(79,168,213,0.1);  border:1px solid rgba(79,168,213,0.25); color:var(--blue); }  .bx-wip .bx-dot  { background:var(--blue); }
+.bx-mock { background:rgba(239,159,39,0.09); border:1px solid rgba(239,159,39,0.25); color:var(--orange); } .bx-mock .bx-dot { background:var(--orange); }
+.bx-dead { background:rgba(232,93,36,0.08);  border:1px solid rgba(232,93,36,0.2);  color:var(--red); }    .bx-dead .bx-dot { background:var(--red); }
+
+/* ─── RISK GRID ─── */
+.risk-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:11px; }
+.risk-card { padding:15px 17px; border-radius:10px; border:1px solid var(--border); background:var(--surface); }
+.risk-level { font-family:'Orbitron',sans-serif; font-size:8.5px; font-weight:700; letter-spacing:.2em; text-transform:uppercase; margin-bottom:7px; }
+.risk-low .risk-level{color:var(--green);}  .risk-low{border-color:rgba(29,158,117,0.2);}
+.risk-med .risk-level{color:var(--orange);} .risk-med{border-color:rgba(239,159,39,0.2);}
+.risk-high .risk-level{color:var(--red);}   .risk-high{border-color:rgba(232,93,36,0.2);}
+.risk-crit .risk-level{color:#ff4444;}      .risk-crit{border-color:rgba(255,68,68,0.25);background:rgba(255,68,68,0.04);}
+.risk-examples { font-family:'JetBrains Mono',monospace; font-size:9.5px; color:var(--muted); line-height:1.9; }
+
+/* ─── HUD TABLE ─── */
+.hud-table { width:100%; border-collapse:collapse; font-size:13px; }
+.hud-table thead tr { border-bottom:1px solid var(--border); }
+.hud-table th { font-family:'JetBrains Mono',monospace; font-size:8.5px; letter-spacing:.2em; color:var(--muted); text-transform:uppercase; text-align:left; padding:7px 13px; font-weight:400; }
+.hud-table td { padding:9px 13px; border-bottom:1px solid rgba(255,255,255,0.025); vertical-align:middle; }
+.hud-table tr:last-child td { border-bottom:none; }
+.hud-table tr:hover td { background:rgba(255,255,255,0.015); }
+
+/* ─── ROADMAP ─── */
+.roadmap { display:flex; flex-direction:column; gap:9px; }
+.rm-item { display:flex; align-items:flex-start; gap:14px; padding:13px 17px; border-radius:9px; border:1px solid var(--border); background:var(--surface); }
+.rm-num { font-family:'Orbitron',sans-serif; font-size:8.5px; font-weight:700; width:24px; height:24px; border-radius:6px; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:2px; }
+.rm-done .rm-num   { background:rgba(29,158,117,0.15); color:var(--green); }
+.rm-wip .rm-num    { background:rgba(79,168,213,0.12); color:var(--blue); }
+.rm-pend .rm-num   { background:rgba(239,159,39,0.12); color:var(--orange); }
+.rm-last .rm-num   { background:rgba(232,93,36,0.1);   color:var(--red); }
+.rm-text { flex:1; }
+.rm-title { font-weight:500; color:var(--text); margin-bottom:1px; }
+.rm-done .rm-title { color:var(--muted); }
+.rm-desc { font-size:12px; color:var(--muted); }
+
+/* ─── STACK ─── */
+.stack-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:9px; }
+.stack-card { padding:13px 15px; border-radius:9px; border:1px solid var(--border); background:var(--surface); }
+.stack-layer { font-family:'JetBrains Mono',monospace; font-size:7.5px; letter-spacing:.18em; color:var(--dim); text-transform:uppercase; margin-bottom:5px; }
+.stack-tech { font-family:'Orbitron',sans-serif; font-size:10.5px; font-weight:600; color:var(--text); letter-spacing:.05em; margin-bottom:2px; }
+.stack-note { font-size:11px; color:var(--muted); }
+
+/* ─── ALERTS ─── */
+.alert { padding:15px 18px; border-radius:9px; display:flex; gap:13px; align-items:flex-start; margin-bottom:14px; }
+.alert-warn    { background:rgba(239,159,39,0.07); border:1px solid rgba(239,159,39,0.2); }
+.alert-info    { background:rgba(79,168,213,0.07); border:1px solid rgba(79,168,213,0.2); }
+.alert-success { background:rgba(29,158,117,0.07); border:1px solid rgba(29,158,117,0.2); }
+.alert-icon { font-size:15px; flex-shrink:0; margin-top:1px; }
+.alert-text { font-size:13px; line-height:1.6; }
+.alert-warn .alert-text    { color:rgba(239,159,39,0.9); }
+.alert-info .alert-text    { color:rgba(79,168,213,0.9); }
+.alert-success .alert-text { color:rgba(29,158,117,0.9); }
+
+/* ─── DEP MATRIX ─── */
+.dep-matrix { background:var(--surface); border:1px solid var(--border); border-radius:11px; overflow:hidden; }
+.dep-row { display:flex; align-items:center; padding:9px 15px; border-bottom:1px solid rgba(255,255,255,0.025); gap:11px; }
+.dep-row:last-child { border-bottom:none; }
+.dep-src { font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--text); width:195px; flex-shrink:0; }
+.dep-arr { color:var(--dim); font-family:'JetBrains Mono',monospace; font-size:11px; flex-shrink:0; }
+.dep-targets { display:flex; flex-wrap:wrap; gap:4px; }
+.dep-t { font-family:'JetBrains Mono',monospace; font-size:9px; padding:2px 7px; border-radius:4px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); color:var(--muted); }
+.dep-t.core { border-color:rgba(124,110,245,0.3); color:var(--purple); }
+.dep-t.agent { border-color:rgba(29,158,117,0.3); color:var(--green); }
+.dep-t.ext { border-color:rgba(79,168,213,0.3); color:var(--blue); }
+.dep-t.db { border-color:rgba(239,159,39,0.3); color:var(--orange); }
+
+@media(max-width:700px){
+  .container{padding:28px 14px;}
+  .arch-grid,.risk-grid,.stack-grid{grid-template-columns:1fr;}
+  .flow{min-width:480px;}
+  .dep-src{width:130px;}
+  .graph-wrap{height:360px;}
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+<!-- HEADER -->
+<div class="header">
+  <div class="eyebrow">MİMARİ HARİTA · NİSAN 2026</div>
+  <h1>THEIA <span>GUARD</span></h1>
+  <div class="header-sub">Sistem Mimarisi & Bağımlılık Haritası — v0.8</div>
+  <div class="badges">
+    <div class="badge-item on">✓ Telegram Bot — Aktif</div>
+    <div class="badge-item on">✓ FastAPI — Port 8000</div>
+    <div class="badge-item on">✓ HUD — deepwebtheia.html</div>
+    <div class="badge-item">Python 3.13</div>
+    <div class="badge-item">SQLite · theia.db</div>
+    <div class="badge-item warn">⏳ Rust kurulumu devam</div>
+  </div>
+</div>
+
+<!-- 01. SİSTEM GRAFİK HARİTASI -->
+<div class="section">
+  <div class="sec-title"><div class="sec-num">01</div> Sistem Grafik Haritası</div>
+  <div class="graph-wrap" id="graph-container">
+    <svg id="graph-svg"></svg>
+    <div class="graph-tooltip" id="graph-tooltip"></div>
+  </div>
+</div>
+
+<!-- 02. ANA MESAJ AKIŞI -->
+<div class="section">
+  <div class="sec-title"><div class="sec-num">02</div> Ana Mesaj Akışı (Telegram)</div>
+  <div class="flow-wrap">
+    <div class="flow">
+      <div class="fn"><div class="fn-label">Giriş</div><div class="fn-name">Telegram MSG</div></div>
+      <div class="fa">→</div>
+      <div class="fn hi"><div class="fn-label">Auth</div><div class="fn-name">_auth()</div></div>
+      <div class="fa">→</div>
+      <div class="fn"><div class="fn-label">Handler</div><div class="fn-name">handle_message()</div></div>
+      <div class="fa"><span>──</span><div class="fa-lbl">parallel</div></div>
+      <div class="fn gr"><div class="fn-label">Agent</div><div class="fn-name">memory_agent</div></div>
+      <div class="fa">+</div>
+      <div class="fn or"><div class="fn-label">Agent</div><div class="fn-name">web_agent</div></div>
+      <div class="fa">→</div>
+      <div class="fn hi"><div class="fn-label">Model</div><div class="fn-name">claude-sonnet-4-6</div></div>
+      <div class="fa">→</div>
+      <div class="fn gr"><div class="fn-label">Çıktı</div><div class="fn-name">Reply + Vault</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- 03. HUD AKIŞI -->
+<div class="section">
+  <div class="sec-title"><div class="sec-num">03</div> HUD Mesaj Akışı (deepwebtheia.html)</div>
+  <div class="flow-wrap">
+    <div class="flow">
+      <div class="fn pk"><div class="fn-label">Kullanıcı</div><div class="fn-name">Talk Modülü</div></div>
+      <div class="fa"><span>──</span><div class="fa-lbl">API key?</div></div>
+      <div class="fn hi"><div class="fn-label">Evet</div><div class="fn-name">api.anthropic.com</div></div>
+      <div class="fa">→</div>
+      <div class="fn hi"><div class="fn-label">Model</div><div class="fn-name">claude-sonnet-4-6</div></div>
+      <div class="fa">→</div>
+      <div class="fn gr"><div class="fn-label">Kayıt</div><div class="fn-name">localStorage</div></div>
+    </div>
+    <div style="margin-top:12px">
+    <div class="flow">
+      <div class="fn pk"><div class="fn-label">Kullanıcı</div><div class="fn-name">Talk Modülü</div></div>
+      <div class="fa"><span>──</span><div class="fa-lbl">key yok</div></div>
+      <div class="fn or"><div class="fn-label">Fallback</div><div class="fn-name">localhost:8000</div></div>
+      <div class="fa">→</div>
+      <div class="fn"><div class="fn-label">API</div><div class="fn-name">/api/chat</div></div>
+      <div class="fa">→</div>
+      <div class="fn hi"><div class="fn-label">Model</div><div class="fn-name">claude-sonnet-4-6</div></div>
+    </div>
+    </div>
+  </div>
+</div>
+
+<!-- 04. MİMARİ KATMANLAR -->
+<div class="section">
+  <div class="sec-title"><div class="sec-num">04</div> Mimari Katmanlar</div>
+  <div class="arch-grid">
+
+    <div class="arch-card ac-purple">
+      <div class="arch-card-header">
+        <div class="arch-icon">⚙</div>
+        <div><div class="arch-card-title">Core</div><div class="arch-card-sub">Altyapı, DB, config</div></div>
+      </div>
+      <div class="arch-files">
+        <div class="arch-file"><div class="arch-file-name">core/config.py</div><div class="arch-file-lines">34 satır</div></div>
+        <div class="arch-file"><div class="arch-file-name">core/db.py</div><div class="arch-file-lines">181 satır</div></div>
+        <div class="arch-file"><div class="arch-file-name">core/pending.py</div><div class="arch-file-lines">55 satır</div></div>
+      </div>
+      <div class="arch-deps"><div class="arch-deps-label">İçerik</div><div class="arch-dep-tags">
+        <div class="arch-dep-tag">SQLite bağlantı</div><div class="arch-dep-tag">11 tablo şeması</div>
+        <div class="arch-dep-tag">Claude istemci</div><div class="arch-dep-tag">ENV yükleme</div>
+      </div></div>
+    </div>
+
+    <div class="arch-card ac-blue">
+      <div class="arch-card-header">
+        <div class="arch-icon">📨</div>
+        <div><div class="arch-card-title">Handlers</div><div class="arch-card-sub">Telegram komut işleyiciler</div></div>
+      </div>
+      <div class="arch-files">
+        <div class="arch-file"><div class="arch-file-name">handlers/message.py</div><div class="arch-file-lines">151 satır</div></div>
+        <div class="arch-file"><div class="arch-file-name">handlers/schedule.py</div><div class="arch-file-lines">502 satır ← en büyük</div></div>
+        <div class="arch-file"><div class="arch-file-name">handlers/shell.py</div><div class="arch-file-lines">122 satır</div></div>
+        <div class="arch-file"><div class="arch-file-name">handlers/memory.py</div><div class="arch-file-lines">69 satır</div></div>
+      </div>
+      <div class="arch-deps"><div class="arch-deps-label">Sorumlu</div><div class="arch-dep-tags">
+        <div class="arch-dep-tag">Mesaj işleme</div><div class="arch-dep-tag">Görev & hatırlatıcı</div>
+        <div class="arch-dep-tag">/cmd komutu</div><div class="arch-dep-tag">Hafıza komutları</div>
+      </div></div>
+    </div>
+
+    <div class="arch-card ac-green">
+      <div class="arch-card-header">
+        <div class="arch-icon">🤖</div>
+        <div><div class="arch-card-title">Agents</div><div class="arch-card-sub">Arka plan AI ajanları</div></div>
+      </div>
+      <div class="arch-files">
+        <div class="arch-file"><div class="arch-file-name">agents/memory_agent.py</div><div class="arch-file-lines">75 satır</div></div>
+        <div class="arch-file"><div class="arch-file-name">agents/summarizer.py</div><div class="arch-file-lines">197 satır</div></div>
+        <div class="arch-file"><div class="arch-file-name">agents/web_agent.py</div><div class="arch-file-lines">96 satır</div></div>
+      </div>
+      <div class="arch-deps"><div class="arch-deps-label">Model kullanımı</div><div class="arch-dep-tags">
+        <div class="arch-dep-tag">Sonnet → web search</div><div class="arch-dep-tag">Haiku → özetleme</div>
+        <div class="arch-dep-tag">FTS → bağlam</div>
+      </div></div>
+    </div>
+
+    <div class="arch-card ac-orange">
+      <div class="arch-card-header">
+        <div class="arch-icon">🗄</div>
+        <div><div class="arch-card-title">Memory / Vault</div><div class="arch-card-sub">Hafıza sistemi</div></div>
+      </div>
+      <div class="arch-files">
+        <div class="arch-file"><div class="arch-file-name">memory/vault_api.py</div><div class="arch-file-lines">185 satır ← aktif</div></div>
+        <div class="arch-file"><div class="arch-file-name dim">memory/permissions.py</div><div class="arch-file-lines">64 satır</div></div>
+        <div class="arch-file"><div class="arch-file-name dim">memory/migration_script.py</div><div class="arch-file-lines">92 satır</div></div>
+      </div>
+      <div class="arch-deps"><div class="arch-deps-label">DB tabloları</div><div class="arch-dep-tags">
+        <div class="arch-dep-tag">entries</div><div class="arch-dep-tag">entries_fts</div>
+        <div class="arch-dep-tag">topics</div><div class="arch-dep-tag">audit</div>
+      </div></div>
+    </div>
+
+    <div class="arch-card ac-red">
+      <div class="arch-card-header">
+        <div class="arch-icon">🛡</div>
+        <div><div class="arch-card-title">Gatekeeper</div><div class="arch-card-sub">Risk sınıflandırma v2.3</div></div>
+      </div>
+      <div class="arch-files">
+        <div class="arch-file"><div class="arch-file-name">gatekeeper.py</div><div class="arch-file-lines">228 satır</div></div>
+      </div>
+      <div class="arch-deps"><div class="arch-deps-label">Risk seviyeleri</div><div class="arch-dep-tags">
+        <div class="arch-dep-tag">LOW → auto</div><div class="arch-dep-tag">MEDIUM → 1 onay</div>
+        <div class="arch-dep-tag">HIGH → 2 onay</div><div class="arch-dep-tag">CRITICAL → engel</div>
+      </div></div>
+    </div>
+
+    <div class="arch-card ac-pink">
+      <div class="arch-card-header">
+        <div class="arch-icon">🌐</div>
+        <div><div class="arch-card-title">API + HUD</div><div class="arch-card-sub">FastAPI · port 8000</div></div>
+      </div>
+      <div class="arch-files">
+        <div class="arch-file"><div class="arch-file-name">api.py</div><div class="arch-file-lines">429 satır ← aktif</div></div>
+        <div class="arch-file"><div class="arch-file-name">static/deepwebtheia.html</div><div class="arch-file-lines">HUD v0.8 ← aktif</div></div>
+        <div class="arch-file"><div class="arch-file-name dim">theia_api.py</div><div class="arch-file-lines">311 satır ← arşivlenecek</div></div>
+        <div class="arch-file"><div class="arch-file-name dim">theia_hud.html</div><div class="arch-file-lines">pasif</div></div>
+      </div>
+      <div class="arch-deps"><div class="arch-deps-label">Özellikler</div><div class="arch-dep-tags">
+        <div class="arch-dep-tag">17 endpoint</div><div class="arch-dep-tag">CORS açık</div>
+        <div class="arch-dep-tag">TTS desteği</div><div class="arch-dep-tag">Static servis</div>
+      </div></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- 05. BAĞIMLILIK MATRİSİ -->
+<div class="section">
+  <div class="sec-title"><div class="sec-num">05</div> Bağımlılık Matrisi</div>
+  <div class="dep-matrix">
+    <div class="dep-row"><div class="dep-src">main.py</div><div class="dep-arr">→</div><div class="dep-targets"><div class="dep-t core">core.config</div><div class="dep-t db">core.db</div><div class="dep-t agent">agents.summarizer</div><div class="dep-t">handlers.*</div></div></div>
+    <div class="dep-row"><div class="dep-src">handlers/message.py</div><div class="dep-arr">→</div><div class="dep-targets"><div class="dep-t agent">memory_agent</div><div class="dep-t agent">web_agent</div><div class="dep-t db">core.db</div><div class="dep-t">memory.vault_api</div><div class="dep-t ext">anthropic</div></div></div>
+    <div class="dep-row"><div class="dep-src">handlers/shell.py</div><div class="dep-arr">→</div><div class="dep-targets"><div class="dep-t">gatekeeper</div><div class="dep-t core">core.config</div><div class="dep-t">core.pending</div></div></div>
+    <div class="dep-row"><div class="dep-src">agents/memory_agent.py</div><div class="dep-arr">→</div><div class="dep-targets"><div class="dep-t db">core.db</div><div class="dep-t">memory.vault_api</div></div></div>
+    <div class="dep-row"><div class="dep-src">agents/summarizer.py</div><div class="dep-arr">→</div><div class="dep-targets"><div class="dep-t db">core.db</div><div class="dep-t">memory.vault_api</div><div class="dep-t ext">anthropic (Haiku)</div></div></div>
+    <div class="dep-row"><div class="dep-src">api.py</div><div class="dep-arr">→</div><div class="dep-targets"><div class="dep-t agent">memory_agent</div><div class="dep-t agent">web_agent</div><div class="dep-t db">core.db</div><div class="dep-t">memory.vault_api</div><div class="dep-t ext">fastapi</div><div class="dep-t ext">edge-tts</div></div></div>
+    <div class="dep-row"><div class="dep-src">memory/vault_api.py</div><div class="dep-arr">→</div><div class="dep-targets"><div class="dep-t db">core.db</div><div class="dep-t">memory.permissions</div></div></div>
+  </div>
+</div>
+
+<!-- 06. ÇAĞRI ZİNCİRİ -->
+<div class="section">
+  <div class="sec-title"><div class="sec-num">06</div> Detaylı Çağrı Zinciri — Tipik Mesaj</div>
+  <div class="call-chain">
+<span class="cc-comment"># Kullanıcı Telegram'dan mesaj gönderdi</span><br>
+<span class="cc-entry">main.py</span> <span class="cc-arrow">──► </span><span class="cc-handler">_auth()</span> <span class="cc-arrow">──► USER_ID kontrolü</span><br>
+<span class="cc-arrow">         └──► </span><span class="cc-handler">handlers/message.py → handle_message()</span><br>
+<span class="cc-arrow">                  ├──► </span><span class="cc-comment">regex: "bunu hatırla" → vault_api.write_entry() → RETURN</span><br>
+<span class="cc-arrow">                  ├──► </span><span class="cc-comment">regex: "🌍" prefix → web_requested = True</span><br>
+<span class="cc-arrow">                  ├──► </span><span class="cc-comment">regex: "bakacağım" → pending_actions tablosu</span><br><br>
+<span class="cc-arrow">                  └──► </span><span class="cc-comment">asyncio.gather() — paralel:</span><br>
+<span class="cc-arrow">                           ├──► </span><span class="cc-agent">memory_agent.get_context(query)</span><br>
+<span class="cc-arrow">                           │         └──► </span><span class="cc-db">vault_api.search_entries() → entries_fts</span><br>
+<span class="cc-arrow">                           │         └──► </span><span class="cc-db">db.topics → başlık + özet</span><br>
+<span class="cc-arrow">                           │         └──► </span><span class="cc-arrow">returns "[Hafıza Bağlamı]..." str</span><br><br>
+<span class="cc-arrow">                           └──► </span><span class="cc-agent">web_agent.search()</span> <span class="cc-comment">(sadece prefix varsa)</span><br>
+<span class="cc-arrow">                                     └──► </span><span class="cc-api">claude.messages.create(web_search tool)</span><br><br>
+<span class="cc-arrow">                  └──► </span><span class="cc-api">claude.messages.create(model=claude-sonnet-4-6)</span><br>
+<span class="cc-arrow">                           system = SYSTEM + tarih + vault_ctx + web_ctx</span><br>
+<span class="cc-arrow">                           messages = get_history(user_id, limit=20)</span><br><br>
+<span class="cc-arrow">                  └──► </span><span class="cc-handler">update.message.reply_text(reply)</span><br><br>
+<span class="cc-arrow">                  └──► </span><span class="cc-comment">asyncio.create_task() — arka planda:</span><br>
+<span class="cc-arrow">                           └──► </span><span class="cc-db">vault_api.write_entry(user_msg)</span><br>
+<span class="cc-arrow">                           └──► </span><span class="cc-db">vault_api.write_entry(assistant_reply)</span>
+  </div>
+</div>
+
+<!-- 07. VERİTABANI -->
+<div class="section">
+  <div class="sec-title"><div class="sec-num">07</div> Veritabanı Tabloları (~/theia/theia.db)</div>
+  <table class="data-table">
+    <thead><tr><th>Tablo</th><th>Amaç</th><th>Kritik?</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">conversations</td><td class="muted-cell">Tüm Telegram mesaj geçmişi (role, content, timestamp)</td><td><span class="bx bx-ok"><span class="bx-dot"></span>Kritik</span></td></tr>
+      <tr><td class="mono">entries</td><td class="muted-cell">Vault hafıza girdileri — her mesaj buraya da yazılır</td><td><span class="bx bx-ok"><span class="bx-dot"></span>Kritik</span></td></tr>
+      <tr><td class="mono">entries_fts</td><td class="muted-cell">Full-text arama indeksi (entries'e sanal tablo)</td><td><span class="bx bx-ok"><span class="bx-dot"></span>Kritik</span></td></tr>
+      <tr><td class="mono">items</td><td class="muted-cell">Görev / rutin / hatırlatıcılar</td><td><span class="bx bx-ok"><span class="bx-dot"></span>Kritik</span></td></tr>
+      <tr><td class="mono">topics</td><td class="muted-cell">Summarizer'ın oluşturduğu konu kümeleri</td><td><span class="bx bx-wip"><span class="bx-dot"></span>Önemli</span></td></tr>
+      <tr><td class="mono">topic_entries</td><td class="muted-cell">Konu ↔ girdi ilişkisi (M:N)</td><td><span class="bx bx-wip"><span class="bx-dot"></span>Önemli</span></td></tr>
+      <tr><td class="mono">checks</td><td class="muted-cell">Görev takip / tamamlama kayıtları</td><td><span class="bx bx-wip"><span class="bx-dot"></span>Önemli</span></td></tr>
+      <tr><td class="mono">pending_actions</td><td class="muted-cell">Niyet takibi ("bakacağım", "yapacağım"...)</td><td><span class="bx bx-wip"><span class="bx-dot"></span>Önemli</span></td></tr>
+      <tr><td class="mono">audit</td><td class="muted-cell">Sistem aksiyonları log</td><td><span class="bx bx-mock"><span class="bx-dot"></span>İkincil</span></td></tr>
+      <tr><td class="mono">permissions</td><td class="muted-cell">Actor izinleri (human, haiku_summarizer, web_agent...)</td><td><span class="bx bx-mock"><span class="bx-dot"></span>İkincil</span></td></tr>
+      <tr><td class="mono">queue</td><td class="muted-cell">Arka plan iş kuyruğu</td><td><span class="bx bx-mock"><span class="bx-dot"></span>İkincil</span></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- 08. GATEKEEPER -->
+<div class="section">
+  <div class="sec-title"><div class="sec-num">08</div> Gatekeeper Risk Seviyeleri</div>
+  <div class="risk-grid">
+    <div class="risk-card risk-low"><div class="risk-level">⬤ LOW — Otomatik çalıştır</div><div class="risk-examples">ls, cat, pwd, ps, df, free<br>grep, find, echo, python print<br>uptime, whoami, date, id</div></div>
+    <div class="risk-card risk-med"><div class="risk-level">⬤ MEDIUM — 1 onay butonu</div><div class="risk-examples">apt install/remove/upgrade<br>pip install, npm install<br>mv, cp -r, sudo, chmod<br>docker, wget, git push</div></div>
+    <div class="risk-card risk-high"><div class="risk-level">⬤ HIGH — 2 kez onay</div><div class="risk-examples">rm -rf, sudo rm<br>DROP TABLE, DELETE FROM<br>shred, truncate<br>systemctl stop/disable</div></div>
+    <div class="risk-card risk-crit"><div class="risk-level">⬤ CRITICAL — Kesinlikle engel</div><div class="risk-examples">rm -rf /, rm -rf /*<br>dd if=/dev/zero → disk<br>mkfs (disk formatlama)<br>fork bomb :(){:|:&amp;};</div></div>
+  </div>
+</div>
+
+<!-- 09. HUD MODÜL DURUMU -->
+<div class="section">
+  <div class="sec-title"><div class="sec-num">09</div> HUD Modülleri — Durum (v0.8)</div>
+  <table class="hud-table">
+    <thead><tr><th>Modül</th><th>Backend</th><th>Durum</th><th>Not</th></tr></thead>
+    <tbody>
+      <tr><td><strong>THEIA TALK</strong></td><td class="mono">api.anthropic.com / /api/chat</td><td><span class="bx bx-ok"><span class="bx-dot"></span>Çalışır</span></td><td class="muted-cell">Sonnet 4.6 · localStorage kalıcı · API key opsiyonel</td></tr>
+      <tr><td><strong>VAULT</strong></td><td class="mono">GET /api/vault/*</td><td><span class="bx bx-ok"><span class="bx-dot"></span>Endpoint hazır</span></td><td class="muted-cell">entries, topics, stats</td></tr>
+      <tr><td><strong>GATEKEEPER</strong></td><td class="mono">GET /api/gatekeeper</td><td><span class="bx bx-ok"><span class="bx-dot"></span>Endpoint hazır</span></td><td class="muted-cell">risk dağılımı, aktivite, log</td></tr>
+      <tr><td><strong>RITUALS</strong></td><td class="mono">GET /api/rituals</td><td><span class="bx bx-ok"><span class="bx-dot"></span>Endpoint hazır</span></td><td class="muted-cell">status filtreli</td></tr>
+      <tr><td><strong>AUDIT</strong></td><td class="mono">GET /api/audit</td><td><span class="bx bx-ok"><span class="bx-dot"></span>Endpoint hazır</span></td><td class="muted-cell">n parametreli</td></tr>
+      <tr><td><strong>PIGEON</strong></td><td class="mono">—</td><td><span class="bx bx-wip"><span class="bx-dot"></span>UI beklemede</span></td><td class="muted-cell">Bot var, onay kuyruğu var, HUD UI yok</td></tr>
+      <tr><td><strong>WOLFSTREET</strong></td><td class="mono">—</td><td><span class="bx bx-mock"><span class="bx-dot"></span>Mock data</span></td><td class="muted-cell">Gmail entegrasyonu en son adım</td></tr>
+      <tr><td><strong>INTENT</strong></td><td class="mono">—</td><td><span class="bx bx-mock"><span class="bx-dot"></span>Skeleton</span></td><td class="muted-cell">NL engine entegrasyonu bekliyor</td></tr>
+      <tr><td><s style="color:var(--muted)">CHAT</s></td><td class="mono">—</td><td><span class="bx bx-dead"><span class="bx-dot"></span>Kaldırıldı</span></td><td class="muted-cell">Talk ile birleştirildi (v0.8)</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- 10. STACK -->
+<div class="section">
+  <div class="sec-title"><div class="sec-num">10</div> Teknoloji Stack'i</div>
+  <div class="stack-grid">
+    <div class="stack-card"><div class="stack-layer">Dil</div><div class="stack-tech">Python 3.13</div><div class="stack-note">async / await</div></div>
+    <div class="stack-card"><div class="stack-layer">Ana Model</div><div class="stack-tech">claude-sonnet-4-6</div><div class="stack-note">Telegram + Talk HUD</div></div>
+    <div class="stack-card"><div class="stack-layer">Hafıza Modeli</div><div class="stack-tech">claude-haiku-4-5</div><div class="stack-note">Özetleme & api.py</div></div>
+    <div class="stack-card"><div class="stack-layer">Telegram</div><div class="stack-tech">PTB 22.7</div><div class="stack-note">python-telegram-bot</div></div>
+    <div class="stack-card"><div class="stack-layer">HTTP API</div><div class="stack-tech">FastAPI</div><div class="stack-note">uvicorn · port 8000</div></div>
+    <div class="stack-card"><div class="stack-layer">Veritabanı</div><div class="stack-tech">SQLite</div><div class="stack-note">~/theia/theia.db</div></div>
+    <div class="stack-card"><div class="stack-layer">HUD Kalıcılık</div><div class="stack-tech">localStorage</div><div class="stack-note">max 40 konuşma / 80 msg</div></div>
+    <div class="stack-card"><div class="stack-layer">TTS</div><div class="stack-tech">edge-tts</div><div class="stack-note">Neural Türkçe ses</div></div>
+    <div class="stack-card"><div class="stack-layer">Ağ Tüneli</div><div class="stack-tech">Tailscale</div><div class="stack-note">Android → dışarıdan erişim</div></div>
+  </div>
+</div>
+
+<!-- 11. ROADMAP -->
+<div class="section">
+  <div class="sec-title"><div class="sec-num">11</div> Yapılacaklar — Öncelik Sırası</div>
+  <div class="roadmap">
+    <div class="rm-item rm-done"><div class="rm-num">1</div><div class="rm-text"><div class="rm-title">api.py başlatma (port 8000)</div><div class="rm-desc">HUD backend tamamlandı</div></div><span class="bx bx-ok"><span class="bx-dot"></span>Tamam</span></div>
+    <div class="rm-item rm-done"><div class="rm-num">2</div><div class="rm-text"><div class="rm-title">HTML port 8585 → 8000</div><div class="rm-desc">HUD doğru porta bağlandı</div></div><span class="bx bx-ok"><span class="bx-dot"></span>Tamam</span></div>
+    <div class="rm-item rm-done"><div class="rm-num">3</div><div class="rm-text"><div class="rm-title">HUD endpoint'leri</div><div class="rm-desc">Vault, Gatekeeper, Rituals, Audit endpoint'leri eklendi</div></div><span class="bx bx-ok"><span class="bx-dot"></span>Tamam</span></div>
+    <div class="rm-item rm-done"><div class="rm-num">4</div><div class="rm-text"><div class="rm-title">CHAT modülü kaldırıldı</div><div class="rm-desc">Talk modülüyle birleştirildi, temizlendi</div></div><span class="bx bx-ok"><span class="bx-dot"></span>Tamam</span></div>
+    <div class="rm-item rm-done"><div class="rm-num">5</div><div class="rm-text"><div class="rm-title">Talk localStorage kalıcılığı</div><div class="rm-desc">Konuşmalar sayfa kapansa da kaybolmuyor</div></div><span class="bx bx-ok"><span class="bx-dot"></span>Tamam</span></div>
+    <div class="rm-item rm-done"><div class="rm-num">6</div><div class="rm-text"><div class="rm-title">deepwebtheia.html → static/ klasörü</div><div class="rm-desc">localhost:8000/static/deepwebtheia.html aktif</div></div><span class="bx bx-ok"><span class="bx-dot"></span>Tamam</span></div>
+    <div class="rm-item rm-wip"><div class="rm-num">7</div><div class="rm-text"><div class="rm-title">Termux — Rust + anthropic kurulumu</div><div class="rm-desc">pkg install rust devam ediyor; anthropic bundan sonra</div></div><span class="bx bx-wip"><span class="bx-dot"></span>Devam</span></div>
+    <div class="rm-item rm-pend"><div class="rm-num">8</div><div class="rm-text"><div class="rm-title">Pigeon workspace UI</div><div class="rm-desc">Bot hazır, onay kuyruğu var — sadece HUD UI eksik</div></div><span class="bx bx-mock"><span class="bx-dot"></span>Beklemede</span></div>
+    <div class="rm-item rm-last"><div class="rm-num">9</div><div class="rm-text"><div class="rm-title">WolfStreet — Gmail entegrasyonu</div><div class="rm-desc">En karmaşık adım — fatura otomasyonu için Gmail API</div></div><span class="bx bx-dead"><span class="bx-dot"></span>En Son</span></div>
+  </div>
+</div>
+
+<!-- 12. DİKKAT NOKTALARI -->
+<div class="section">
+  <div class="sec-title"><div class="sec-num">12</div> Dikkat Noktaları</div>
+  <div class="alert alert-warn">
+    <div class="alert-icon">⚠</div>
+    <div class="alert-text"><strong>api.py vs theia_api.py:</strong> İki ayrı API dosyası mevcut. <code>api.py</code> aktif (429 satır), <code>theia_api.py</code> (311 satır) paralel duruyor. Arşivlenmeli.</div>
+  </div>
+  <div class="alert alert-warn">
+    <div class="alert-icon">⚠</div>
+    <div class="alert-text"><strong>Kod tekrarı — message.py vs api.py:</strong> <code>_MEM_SAVE_RE</code>, <code>_build_system()</code> her iki dosyada da tanımlı. İki yerde güncelleme riski — ilerleyen süreçte sessiz hata üretebilir.</div>
+  </div>
+  <div class="alert alert-warn">
+    <div class="alert-icon">⚠</div>
+    <div class="alert-text"><strong>handlers/schedule.py 502 satır:</strong> En büyük dosya. Büyümeye devam ederse <code>schedule_crud.py</code> + <code>schedule_jobs.py</code> olarak iki parçaya bölünmeli.</div>
+  </div>
+  <div class="alert alert-info">
+    <div class="alert-icon">ℹ</div>
+    <div class="alert-text"><strong>memory/permissions.py + migration_script.py:</strong> Aktif kullanımda değil. permissions tek kullanıcılı sistemde erken soyutlama; migration DB stable olduktan sonra arşivlenebilir.</div>
+  </div>
+  <div class="alert alert-success">
+    <div class="alert-icon">✓</div>
+    <div class="alert-text"><strong>Güçlü yanlar:</strong> THEIA_HARITA.md her değişiklik sonrası güncel tutuluyor. Gatekeeper regex tabanlı risk sınıflandırması test edilebilir ve öngörülebilir. Vault FTS + topic sistemi ölçeklenebilir hafıza altyapısı. Talk modülü localStorage ile artık gerçek anlamda kalıcı.</div>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<script>
+// ========== GRAPH MAP ==========
+const container = document.getElementById('graph-container');
+const svg = document.getElementById('graph-svg');
+const tooltip = document.getElementById('graph-tooltip');
+
+const NODES = [
+  { id:'user',     label:'KULLANICI',   sub:'Sen · Kaptan',             color:'#C77DFF', x:0.5,  y:0.08 },
+  { id:'telegram', label:'TELEGRAM',    sub:'Giriş noktası',            color:'#4FA8D5', x:0.18, y:0.22 },
+  { id:'browser',  label:'TARAYICI',    sub:'localhost:8000',           color:'#4FA8D5', x:0.82, y:0.22 },
+  { id:'main',     label:'main.py',     sub:'Bot giriş noktası',        color:'#7C6EF5', x:0.18, y:0.42 },
+  { id:'api',      label:'api.py',      sub:'FastAPI · port 8000',      color:'#7C6EF5', x:0.82, y:0.42 },
+  { id:'handler',  label:'HANDLER',     sub:'handlers/message.py',      color:'#4FA8D5', x:0.18, y:0.60 },
+  { id:'hud',      label:'HUD',         sub:'deepwebtheia.html',        color:'#C77DFF', x:0.82, y:0.60 },
+  { id:'gate',     label:'GATEKEEPER',  sub:'gatekeeper.py',            color:'#E85D24', x:0.36, y:0.72 },
+  { id:'memory',   label:'MEMORY',      sub:'memory_agent + vault_api', color:'#EF9F27', x:0.18, y:0.84 },
+  { id:'web',      label:'WEB AGENT',   sub:'web_agent.py',             color:'#1D9E75', x:0.50, y:0.55, isCore:false },
+  { id:'claude',   label:'CLAUDE',      sub:'claude-sonnet-4-6',        color:'#7C6EF5', x:0.50, y:0.38, isCore:true },
+  { id:'db',       label:'theia.db',    sub:'SQLite · 11 tablo',        color:'#EF9F27', x:0.64, y:0.84 },
+  { id:'summary',  label:'SUMMARIZER',  sub:'agents/summarizer.py',     color:'#1D9E75', x:0.36, y:0.90 },
+  { id:'anthropic',label:'ANTHROPIC',   sub:'api.anthropic.com',        color:'#C77DFF', x:0.82, y:0.84 },
+];
+
+const EDGES = [
+  { from:'user',     to:'telegram',  label:'Telegram mesajı' },
+  { from:'user',     to:'browser',   label:'HTTP browser' },
+  { from:'telegram', to:'main',      label:'PTB update' },
+  { from:'browser',  to:'api',       label:'GET/POST' },
+  { from:'browser',  to:'anthropic', label:'Talk direkt API', dashed:true },
+  { from:'main',     to:'handler',   label:'handle_message()' },
+  { from:'main',     to:'gate',      label:'/cmd → gatekeeper' },
+  { from:'api',      to:'hud',       label:'static servis' },
+  { from:'api',      to:'claude',    label:'/api/chat → claude' },
+  { from:'handler',  to:'memory',    label:'get_context()' },
+  { from:'handler',  to:'web',       label:'🌍 prefix' },
+  { from:'handler',  to:'claude',    label:'messages.create()' },
+  { from:'memory',   to:'db',        label:'vault_api CRUD' },
+  { from:'web',      to:'claude',    label:'web_search tool' },
+  { from:'claude',   to:'db',        label:'write_entry arka plan' },
+  { from:'summary',  to:'db',        label:'topics güncelle' },
+  { from:'summary',  to:'claude',    label:'Haiku özetleme' },
+  { from:'anthropic',to:'hud',       label:'Talk yanıtı', dashed:true },
+];
+
+function renderGraph() {
+  const W = container.offsetWidth;
+  const H = container.offsetHeight;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+
+  // Draw edges
+  EDGES.forEach(e => {
+    const a = NODES.find(n=>n.id===e.from);
+    const b = NODES.find(n=>n.id===e.to);
+    if (!a||!b) return;
+    const x1=a.x*W, y1=a.y*H, x2=b.x*W, y2=b.y*H;
+    const dx=x2-x1, dy=y2-y1;
+    const mx=x1+dx*0.5, my=y1+dy*0.5;
+    // bezier control
+    const cx1=x1+dx*0.2-dy*0.08, cy1=y1+dy*0.2+dx*0.08;
+    const cx2=x1+dx*0.8+dy*0.08, cy2=y1+dy*0.8-dx*0.08;
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+    const col = a.color;
+    const r=parseInt(col.slice(1,3),16), g=parseInt(col.slice(3,5),16), bb=parseInt(col.slice(5,7),16);
+    path.setAttribute('d', `M ${x1} ${y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${x2} ${y2}`);
+    path.setAttribute('stroke', `rgba(${r},${g},${bb},0.25)`);
+    path.setAttribute('stroke-width', e.dashed ? '1' : '1.2');
+    path.setAttribute('fill', 'none');
+    if (e.dashed) path.setAttribute('stroke-dasharray','5,4');
+    path.setAttribute('data-label', e.label);
+    path.style.cursor = 'default';
+    // hover
+    path.addEventListener('mouseenter', ev => {
+      path.setAttribute('stroke', `rgba(${r},${g},${bb},0.7)`);
+      path.setAttribute('stroke-width', '2');
+      tooltip.style.opacity = '1';
+      tooltip.textContent = e.label;
+    });
+    path.addEventListener('mousemove', ev => {
+      const rect = container.getBoundingClientRect();
+      tooltip.style.left = (ev.clientX - rect.left + 12) + 'px';
+      tooltip.style.top  = (ev.clientY - rect.top - 28) + 'px';
+    });
+    path.addEventListener('mouseleave', () => {
+      path.setAttribute('stroke', `rgba(${r},${g},${bb},0.25)`);
+      path.setAttribute('stroke-width', e.dashed ? '1' : '1.2');
+      tooltip.style.opacity = '0';
+    });
+
+    // animated dot
+    const circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('r', '3');
+    circle.setAttribute('fill', `rgba(${r},${g},${bb},0.85)`);
+    const anim = document.createElementNS('http://www.w3.org/2000/svg','animateMotion');
+    anim.setAttribute('dur', (2.5 + Math.random()*2.5) + 's');
+    anim.setAttribute('repeatCount','indefinite');
+    anim.setAttribute('begin', (Math.random()*3)+'s');
+    const mpath = document.createElementNS('http://www.w3.org/2000/svg','mpath');
+    path.setAttribute('id','p_'+e.from+'_'+e.to);
+    mpath.setAttribute('href','#p_'+e.from+'_'+e.to);
+    anim.appendChild(mpath);
+    circle.appendChild(anim);
+
+    svg.appendChild(path);
+    svg.appendChild(circle);
+  });
+
+  // Draw nodes
+  NODES.forEach(n => {
+    const x = n.x * W;
+    const y = n.y * H;
+    const el = document.createElement('div');
+    el.className = 'graph-node';
+    el.style.left = x + 'px';
+    el.style.top  = y + 'px';
+    const col = n.color;
+    const r=parseInt(col.slice(1,3),16), g=parseInt(col.slice(3,5),16), b=parseInt(col.slice(5,7),16);
+    el.innerHTML = `
+      <div class="gn-box" style="
+        border-color:rgba(${r},${g},${b},0.4);
+        background:rgba(${r},${g},${b},${n.isCore?0.18:0.09});
+        ${n.isCore?`box-shadow:0 0 60px rgba(${r},${g},${b},0.3),0 0 120px rgba(${r},${g},${b},0.1);animation:corePulse 3s ease-in-out infinite;`:''}
+        --nc:rgba(${r},${g},${b},0.5);
+      ">
+        <div class="gn-label" style="color:${col};${n.isCore?'font-size:13px;letter-spacing:.25em;':''}">${n.label}</div>
+        <div class="gn-sub">${n.sub}</div>
+      </div>`;
+    container.appendChild(el);
+  });
+}
+
+renderGraph();
+window.addEventListener('resize', () => {
+  // remove old nodes
+  document.querySelectorAll('.graph-node').forEach(e=>e.remove());
+  svg.innerHTML = '';
+  renderGraph();
+});
+</script>
+</body>
+</html>

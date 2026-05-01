@@ -1,4 +1,4 @@
-# # THEIA SİSTEM HARİTASI
+# THEIA SİSTEM HARİTASI
 > Son güncelleme: Mayıs 2026 | Versiyon: 0.9
 
 ---

@@ -1,0 +1,1835 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Theia Vault — Core</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&display=swap');
+
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { width:100%; height:100%; background:#05030a; overflow:hidden; }
+
+canvas { position:absolute; top:0; left:0; }
+#bg { z-index:0; }
+#c  { z-index:1; }
+
+#overlay { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:10; }
+
+/* ========== MODULE CARDS ========== */
+.mod {
+  position:absolute;
+  pointer-events:all;
+  cursor:pointer;
+  width:210px;
+  padding:18px 20px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,0.08);
+  background:linear-gradient(145deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%);
+  backdrop-filter:blur(20px) saturate(1.4);
+  -webkit-backdrop-filter:blur(20px) saturate(1.4);
+  transition:all 0.45s cubic-bezier(0.23, 1, 0.32, 1);
+  transform: translate(-50%,-50%) translateZ(0px) rotateX(0deg) rotateY(0deg);
+  transform-style:preserve-3d;
+  box-shadow:
+    0 4px 24px rgba(0,0,0,0.4),
+    inset 0 1px 0 rgba(255,255,255,0.06),
+    inset 0 -1px 0 rgba(0,0,0,0.3);
+  overflow:hidden;
+}
+.mod::before {
+  content:'';
+  position:absolute;
+  top:0; left:0; right:0; bottom:0;
+  border-radius:14px;
+  padding:1.5px;
+  background:linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.02) 50%, rgba(255,255,255,0.08) 100%);
+  -webkit-mask:linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite:xor;
+  mask-composite:exclude;
+  pointer-events:none;
+  opacity:0.6;
+  transition:opacity 0.4s;
+}
+.mod::after {
+  content:'';
+  position:absolute;
+  top:-50%; left:-50%; width:200%; height:200%;
+  background:radial-gradient(circle at var(--mx,50%) var(--my,50%), rgba(255,255,255,0.08) 0%, transparent 60%);
+  pointer-events:none;
+  opacity:0;
+  transition:opacity 0.4s;
+}
+.mod:hover::after { opacity:1; }
+.mod:hover::before { opacity:1; }
+.mod:hover {
+  border-color:rgba(255,255,255,0.18);
+  background:linear-gradient(145deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.02) 100%);
+  transform: translate(-50%,-50%) translateZ(40px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)) scale(1.06);
+  box-shadow:
+    0 8px 40px rgba(0,0,0,0.5),
+    0 0 60px var(--glow, rgba(124,110,245,0.15)),
+    inset 0 1px 0 rgba(255,255,255,0.1),
+    inset 0 -1px 0 rgba(0,0,0,0.3);
+}
+.mod.active {
+  background:linear-gradient(145deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.03) 100%);
+  border-color:var(--col, rgba(124,110,245,0.5));
+  transform: translate(-50%,-50%) translateZ(25px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));
+  box-shadow:
+    0 0 80px var(--glow, rgba(124,110,245,0.25)),
+    0 0 120px var(--glow2, rgba(124,110,245,0.08)),
+    inset 0 1px 0 rgba(255,255,255,0.15),
+    inset 0 -1px 0 rgba(0,0,0,0.2);
+  animation:modPulse 2.5s ease-in-out infinite;
+}
+@keyframes modPulse {
+  0%, 100% { box-shadow:0 0 80px var(--glow, rgba(124,110,245,0.25)), 0 0 120px var(--glow2, rgba(124,110,245,0.08)), inset 0 1px 0 rgba(255,255,255,0.15); }
+  50% { box-shadow:0 0 100px var(--glow, rgba(124,110,245,0.35)), 0 0 160px var(--glow2, rgba(124,110,245,0.12)), inset 0 1px 0 rgba(255,255,255,0.2); }
+}
+
+.mod-header { display:flex; align-items:center; gap:10px; position:relative; z-index:2; transform:translateZ(15px); }
+.mod-icon {
+  width:32px; height:32px;
+  border-radius:8px;
+  display:flex; align-items:center; justify-content:center;
+  font-family:'Orbitron', sans-serif;
+  font-size:11px; font-weight:700;
+  color:rgba(255,255,255,0.9);
+  background:linear-gradient(135deg, var(--col, #7C6EF5) 0%, var(--col2, #5a4fd4) 100%);
+  box-shadow:0 2px 12px var(--glow, rgba(124,110,245,0.4));
+  position:relative;
+  overflow:hidden;
+  transform:translateZ(5px);
+}
+.mod-icon::after {
+  content:'';
+  position:absolute; top:0; left:0; right:0; bottom:0;
+  background:linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 50%);
+}
+.mod-icon.svg-icon { padding:6px; }
+.mod-icon.svg-icon svg { width:100%; height:100%; color:rgba(255,255,255,0.95); position:relative; z-index:2; }
+
+#m-wolf .mod-icon {
+  background: radial-gradient(circle at 65% 60%, var(--col2, #E8B86D) 0%, var(--col, #B8C5D6) 55%, #6b7585 100%);
+  box-shadow: 0 2px 12px rgba(232, 184, 109, 0.35), inset 0 0 8px rgba(232, 184, 109, 0.15);
+}
+#m-wolf .mod-icon svg { color: rgba(20, 25, 35, 0.85); }
+
+.mod-name {
+  font-family:'Orbitron', sans-serif;
+  font-size:11px; font-weight:600; letter-spacing:.12em;
+  color:rgba(255,255,255,0.92); text-transform:uppercase;
+}
+.mod-sub {
+  font-family:'Rajdhani', sans-serif;
+  font-size:12px; font-weight:500; color:rgba(255,255,255,0.35);
+  margin-top:6px; letter-spacing:.06em; padding-left:42px;
+  transform:translateZ(10px);
+}
+.mod-bar-wrap {
+  margin-top:14px;
+  height:3px;
+  border-radius:2px;
+  background:rgba(255,255,255,0.05);
+  overflow:hidden;
+  position:relative;
+  transform:translateZ(10px);
+}
+.mod-bar {
+  height:100%; border-radius:2px; width:0%;
+  transition:width 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+  background:linear-gradient(90deg, var(--col, #7C6EF5) 0%, var(--col2, #9b8fff) 100%);
+  box-shadow:0 0 8px var(--glow, rgba(124,110,245,0.5));
+}
+.mod-stats {
+  display:flex; gap:12px; margin-top:10px; padding-left:42px;
+  opacity:0; transform:translateY(4px) translateZ(10px);
+  transition:all 0.35s ease;
+}
+.mod:hover .mod-stats, .mod.active .mod-stats { opacity:1; transform:translateY(0) translateZ(10px); }
+.mod-stat {
+  font-family:'JetBrains Mono', monospace;
+  font-size:9px; color:rgba(255,255,255,0.25);
+  letter-spacing:.04em;
+}
+.mod-stat span { color:var(--col, rgba(255,255,255,0.5)); font-weight:500; }
+
+/* ========== STATUS BAR ========== */
+#statusbar {
+  position:absolute; bottom:28px; left:50%; transform:translateX(-50%);
+  font-family:'Orbitron', sans-serif;
+  font-size:10px; font-weight:500; letter-spacing:.2em;
+  color:rgba(255,255,255,0.18); text-transform:uppercase;
+  pointer-events:none; text-align:center; white-space:nowrap;
+  display:flex; align-items:center; gap:16px;
+}
+#statusbar .sep { width:4px; height:4px; border-radius:50%; background:rgba(255,255,255,0.12); }
+#statusbar .pulse-dot {
+  width:6px; height:6px; border-radius:50%; background:#1D9E75;
+  box-shadow:0 0 8px #1D9E75, 0 0 16px #1D9E75;
+  animation:statusPulse 2s ease-in-out infinite;
+}
+@keyframes statusPulse {
+  0%, 100% { opacity:0.6; transform:scale(1); }
+  50% { opacity:1; transform:scale(1.3); }
+}
+
+/* ========== CORE LABEL ========== */
+#corelabel {
+  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  font-family:'Orbitron', sans-serif;
+  font-size:13px; font-weight:700; letter-spacing:.35em;
+  color:rgba(255,255,255,0.08); text-transform:uppercase;
+  pointer-events:none; text-align:center; line-height:2.2;
+  margin-top:100px;
+  text-shadow:0 0 40px rgba(124,110,245,0.1);
+  transition:transform 0.65s cubic-bezier(0.23, 1, 0.32, 1), opacity 0.5s;
+}
+#corelabel span { font-size:9px; letter-spacing:.4em; color:rgba(255,255,255,0.04); }
+body.ws-open #corelabel { transform: translate(-50%, -50%) translateX(-12%) scale(0.85); opacity: 0.4; }
+
+/* ========== TOP HUD BAR ========== */
+#hud-top {
+  position:absolute; top:0; left:0; right:0;
+  height:48px; display:flex; align-items:center; justify-content:space-between;
+  padding:0 32px; pointer-events:none; z-index:20;
+}
+.hud-left, .hud-right { display:flex; align-items:center; gap:20px; }
+.hud-item {
+  font-family:'JetBrains Mono', monospace;
+  font-size:9px; letter-spacing:.1em;
+  color:rgba(255,255,255,0.2); text-transform:uppercase;
+}
+.hud-item span { color:rgba(255,255,255,0.45); }
+.hud-line { width:120px; height:1px; background:linear-gradient(90deg, transparent, rgba(124,110,245,0.3), transparent); }
+
+/* ========== DRAG & DROP ========== */
+.mod.dragging {
+  opacity: 0.35;
+  transform: translate(-50%,-50%) translateZ(0px) scale(0.92) !important;
+  transition: opacity 0.15s, transform 0.15s !important;
+  pointer-events: none;
+  border-color: rgba(255,255,255,0.25) !important;
+}
+.mod.drag-ghost {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  transform: translate(-50%,-50%) translateZ(60px) rotateX(4deg) scale(1.08) !important;
+  opacity: 0.92;
+  box-shadow:
+    0 16px 60px rgba(0,0,0,0.6),
+    0 0 80px var(--glow, rgba(124,110,245,0.3)),
+    inset 0 1px 0 rgba(255,255,255,0.15) !important;
+  border-color: rgba(255,255,255,0.3) !important;
+  transition: none !important;
+  cursor: grabbing;
+}
+.mod.drop-target {
+  border-color: rgba(255,255,255,0.35) !important;
+  background: linear-gradient(145deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.04) 100%) !important;
+  box-shadow:
+    0 0 60px var(--glow, rgba(124,110,245,0.3)),
+    inset 0 1px 0 rgba(255,255,255,0.2) !important;
+  transform: translate(-50%,-50%) translateZ(30px) scale(1.05) !important;
+  transition: all 0.2s cubic-bezier(0.23, 1, 0.32, 1) !important;
+}
+.mod { cursor: grab; }
+.mod:active { cursor: grabbing; }
+
+@keyframes swapFlash {
+  0% { box-shadow: 0 0 0 rgba(255,255,255,0); }
+  40% { box-shadow: 0 0 80px rgba(255,255,255,0.3), 0 0 120px var(--glow, rgba(124,110,245,0.4)); }
+  100% { box-shadow: 0 4px 24px rgba(0,0,0,0.4); }
+}
+.mod.swap-flash { animation: swapFlash 0.5s ease-out forwards !important; }
+
+#drag-hint {
+  position: absolute;
+  bottom: 58px; left: 50%;
+  transform: translateX(-50%);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px; letter-spacing: .15em;
+  color: rgba(255,255,255,0.12);
+  text-transform: uppercase;
+  pointer-events: none; z-index: 20;
+  opacity: 1; transition: opacity 0.6s;
+}
+#drag-hint.hidden { opacity: 0; }
+
+/* ========== WORKSPACE PANEL ========== */
+#workspace {
+  position: absolute;
+  top: 68px; bottom: 68px;
+  right: 32px;
+  left: 50%;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: linear-gradient(145deg, rgba(20,15,40,0.85) 0%, rgba(10,8,25,0.92) 100%);
+  backdrop-filter: blur(28px) saturate(1.6);
+  -webkit-backdrop-filter: blur(28px) saturate(1.6);
+  box-shadow:
+    0 8px 60px rgba(0,0,0,0.5),
+    0 0 100px var(--ws-glow, rgba(124,110,245,0.15)),
+    inset 0 1px 0 rgba(255,255,255,0.08);
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  visibility: hidden;
+  opacity: 0;
+  transform: translateX(40px) scale(0.94);
+  transition:
+    opacity 0.55s cubic-bezier(0.23, 1, 0.32, 1),
+    transform 0.6s cubic-bezier(0.23, 1, 0.32, 1),
+    visibility 0s linear 0.55s;
+  pointer-events: none;
+}
+#workspace.open {
+  visibility: visible;
+  opacity: 1;
+  transform: translateX(0) scale(1);
+  pointer-events: auto;
+  transition:
+    opacity 0.55s cubic-bezier(0.23, 1, 0.32, 1),
+    transform 0.6s cubic-bezier(0.23, 1, 0.32, 1),
+    visibility 0s linear 0s;
+}
+#workspace::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  border-radius: 16px; padding: 1.5px;
+  background: linear-gradient(135deg, var(--ws-col, rgba(124,110,245,0.4)) 0%, rgba(255,255,255,0.04) 50%, var(--ws-col, rgba(124,110,245,0.2)) 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  pointer-events: none; opacity: 0.7;
+}
+
+#ws-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  display: flex; align-items: center; gap: 14px;
+  flex-shrink: 0;
+  opacity: 0; transform: translateY(-8px);
+  transition: opacity 0.5s ease 0.15s, transform 0.5s ease 0.15s;
+}
+#workspace.open #ws-header { opacity: 1; transform: translateY(0); }
+
+#ws-body {
+  flex: 1; overflow: hidden; display: flex;
+  opacity: 0; transform: translateY(12px);
+  transition: opacity 0.5s ease 0.28s, transform 0.5s ease 0.28s;
+}
+#workspace.open #ws-body { opacity: 1; transform: translateY(0); }
+
+#ws-icon {
+  width: 36px; height: 36px;
+  border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, var(--ws-col, #7C6EF5) 0%, var(--ws-col2, #5a4fd4) 100%);
+  box-shadow: 0 2px 16px var(--ws-glow, rgba(124,110,245,0.5));
+  font-family: 'Orbitron', sans-serif;
+  font-size: 13px; font-weight: 700;
+  color: rgba(255,255,255,0.95);
+  position: relative; overflow: hidden;
+}
+#ws-icon svg { width: 22px; height: 22px; color: rgba(255,255,255,0.95); }
+#ws-icon::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(135deg, rgba(255,255,255,0.25) 0%, transparent 50%); }
+#ws-title-wrap { flex: 1; }
+#ws-title { font-family: 'Orbitron', sans-serif; font-size: 14px; font-weight: 700; letter-spacing: .14em; color: rgba(255,255,255,0.95); text-transform: uppercase; }
+#ws-sub { font-family: 'Rajdhani', sans-serif; font-size: 12px; color: rgba(255,255,255,0.4); letter-spacing: .04em; margin-top: 2px; }
+#ws-close {
+  width: 36px; height: 36px;
+  border-radius: 9px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s; flex-shrink: 0;
+}
+#ws-close:hover { background: rgba(232,93,36,0.15); border-color: rgba(232,93,36,0.4); transform: rotate(90deg); }
+#ws-close svg { width: 14px; height: 14px; stroke: rgba(255,255,255,0.6); stroke-width: 2; fill: none; stroke-linecap: round; }
+#ws-close:hover svg { stroke: rgba(255,180,140,0.95); }
+
+#c { transition: transform 0.65s cubic-bezier(0.23, 1, 0.32, 1); }
+body.ws-open #c { transform-origin: 50% 50%; transform: translateX(-12%) scale(0.85); }
+body.ws-open .mod:not(.active) { opacity: 0.3; transition: opacity 0.5s; }
+body.ws-open .mod.active { z-index: 70; }
+
+/* ========== TALK / CHAT WORKSPACE ========== */
+.talk-history {
+  width: 220px; border-right: 1px solid rgba(255,255,255,0.05);
+  display: flex; flex-direction: column; flex-shrink: 0;
+}
+.talk-history-header {
+  padding: 14px 16px 10px;
+  font-family: 'Orbitron', sans-serif; font-size: 9px; font-weight: 600; letter-spacing: .18em;
+  color: rgba(255,255,255,0.3); text-transform: uppercase;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.talk-new-btn {
+  background: rgba(199,125,255,0.1);
+  border: 1px solid rgba(199,125,255,0.2);
+  color: rgba(199,125,255,0.9);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; padding: 4px 8px; border-radius: 5px; cursor: pointer;
+  letter-spacing: .05em; transition: all 0.2s;
+}
+.talk-new-btn:hover { background: rgba(199,125,255,0.2); border-color: rgba(199,125,255,0.4); }
+.talk-history-list {
+  flex: 1; overflow-y: auto; padding: 4px 8px 12px;
+  scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.08) transparent;
+}
+.talk-history-list::-webkit-scrollbar { width: 3px; }
+.talk-history-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
+.history-item {
+  padding: 9px 11px; border-radius: 7px; margin-bottom: 4px;
+  cursor: pointer; border: 1px solid transparent; transition: all 0.2s;
+}
+.history-item:hover { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.06); }
+.history-item.active { background: rgba(199,125,255,0.08); border-color: rgba(199,125,255,0.2); }
+.history-title {
+  font-family: 'Rajdhani', sans-serif; font-size: 12.5px; font-weight: 500;
+  color: rgba(255,255,255,0.8); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px;
+}
+.history-meta { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: rgba(255,255,255,0.25); letter-spacing: .04em; }
+.history-empty { padding: 20px 14px; text-align: center; font-family: 'Rajdhani', sans-serif; font-size: 11.5px; color: rgba(255,255,255,0.25); font-style: italic; }
+
+.talk-main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.talk-messages {
+  flex: 1; overflow-y: auto; padding: 18px 22px;
+  display: flex; flex-direction: column; gap: 14px;
+  scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.08) transparent;
+}
+.talk-messages::-webkit-scrollbar { width: 3px; }
+.talk-messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
+.talk-msg { display: flex; flex-direction: column; gap: 4px; max-width: 78%; animation: msgIn 0.3s ease-out; }
+.talk-msg.user { align-self: flex-end; }
+.talk-msg.theia { align-self: flex-start; }
+@keyframes msgIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+.talk-msg-label { font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: .12em; text-transform: uppercase; color: rgba(255,255,255,0.25); }
+.talk-msg.user .talk-msg-label { text-align: right; }
+.talk-msg-bubble {
+  padding: 11px 15px; border-radius: 12px;
+  font-family: 'Rajdhani', sans-serif; font-size: 14px; line-height: 1.55;
+  color: rgba(255,255,255,0.85); word-break: break-word;
+}
+.talk-msg.user .talk-msg-bubble {
+  background: rgba(199,125,255,0.1); border: 1px solid rgba(199,125,255,0.2); border-bottom-right-radius: 4px;
+}
+.talk-msg.theia .talk-msg-bubble {
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); border-bottom-left-radius: 4px;
+}
+.typing-dots span {
+  display:inline-block; width:4px; height:4px; border-radius:50%;
+  background:rgba(255,255,255,0.3); margin:0 2px;
+  animation:typingBounce 1.2s ease-in-out infinite;
+}
+.typing-dots span:nth-child(2){animation-delay:.2s}
+.typing-dots span:nth-child(3){animation-delay:.4s}
+@keyframes typingBounce {
+  0%,60%,100%{transform:translateY(0);opacity:.3}
+  30%{transform:translateY(-4px);opacity:.8}
+}
+
+.talk-input-area {
+  padding: 14px 18px 16px; border-top: 1px solid rgba(255,255,255,0.06);
+  display: flex; gap: 10px; align-items: flex-end; flex-shrink: 0;
+}
+.talk-input {
+  flex: 1; background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08); border-radius: 10px;
+  padding: 11px 14px; font-family: 'Rajdhani', sans-serif;
+  font-size: 14px; color: rgba(255,255,255,0.85);
+  resize: none; outline: none; max-height: 120px; min-height: 42px;
+  line-height: 1.45; transition: border-color 0.2s; scrollbar-width: none;
+}
+.talk-input::placeholder { color: rgba(255,255,255,0.22); }
+.talk-input:focus { border-color: rgba(199,125,255,0.35); }
+.talk-send {
+  width: 42px; height: 42px; border-radius: 10px;
+  background: linear-gradient(135deg, rgba(199,125,255,0.2) 0%, rgba(199,125,255,0.08) 100%);
+  border: 1px solid rgba(199,125,255,0.3); cursor: pointer; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; transition: all 0.2s;
+}
+.talk-send:hover { background: linear-gradient(135deg, rgba(199,125,255,0.3) 0%, rgba(199,125,255,0.15) 100%); border-color: rgba(199,125,255,0.5); transform: translateY(-1px); }
+.talk-send svg { width: 16px; height: 16px; fill: none; stroke: rgba(255,255,255,0.85); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ========== WOLFSTREET WORKSPACE ========== */
+.wolf-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.wolf-summary-bar { display: flex; gap: 12px; padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); flex-shrink: 0; }
+.wolf-summary-card {
+  flex: 1; padding: 12px 14px; background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.06); border-radius: 9px; min-width: 0;
+}
+.wolf-summary-card.urgent { background: linear-gradient(135deg, rgba(232, 184, 109, 0.08) 0%, rgba(232, 184, 109, 0.02) 100%); border-color: rgba(232, 184, 109, 0.25); }
+.wolf-summary-label { font-family: 'JetBrains Mono', monospace; font-size: 8.5px; letter-spacing: .15em; text-transform: uppercase; color: rgba(255,255,255,0.35); margin-bottom: 5px; }
+.wolf-summary-value { font-family: 'Orbitron', sans-serif; font-size: 17px; font-weight: 700; color: rgba(255,255,255,0.92); }
+.wolf-summary-card.urgent .wolf-summary-value { color: #E8B86D; }
+.wolf-summary-sub { font-family: 'Rajdhani', sans-serif; font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 3px; }
+
+.wolf-tabs { display: flex; gap: 2px; padding: 0 20px; border-bottom: 1px solid rgba(255,255,255,0.05); flex-shrink: 0; }
+.wolf-tab {
+  padding: 10px 16px; background: transparent; border: none; border-bottom: 2px solid transparent;
+  color: rgba(255,255,255,0.4); font-family: 'Orbitron', sans-serif; font-size: 9.5px; font-weight: 600;
+  letter-spacing: .15em; text-transform: uppercase; cursor: pointer; transition: all 0.2s;
+}
+.wolf-tab:hover { color: rgba(255,255,255,0.7); }
+.wolf-tab.active { color: #E8B86D; border-bottom-color: #E8B86D; }
+
+.wolf-list {
+  flex: 1; overflow-y: auto; padding: 14px 20px 20px;
+  scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.08) transparent;
+}
+.wolf-list::-webkit-scrollbar { width: 3px; }
+.wolf-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
+
+.invoice-row {
+  display: flex; align-items: center; gap: 14px; padding: 12px 14px; margin-bottom: 6px;
+  background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 9px; transition: all 0.2s;
+}
+.invoice-row:hover { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.1); }
+.invoice-row.urgent { border-color: rgba(232, 184, 109, 0.3); background: linear-gradient(90deg, rgba(232, 184, 109, 0.06) 0%, rgba(255,255,255,0.02) 100%); }
+.invoice-row.overdue { border-color: rgba(232, 93, 36, 0.4); background: linear-gradient(90deg, rgba(232, 93, 36, 0.08) 0%, rgba(255,255,255,0.02) 100%); }
+.invoice-icon { width: 32px; height: 32px; border-radius: 7px; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; font-family: 'Orbitron', sans-serif; font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.7); flex-shrink: 0; }
+.invoice-main { flex: 1; min-width: 0; }
+.invoice-name { font-family: 'Rajdhani', sans-serif; font-size: 13.5px; font-weight: 600; color: rgba(255,255,255,0.85); margin-bottom: 2px; }
+.invoice-meta { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; color: rgba(255,255,255,0.35); letter-spacing: .03em; }
+.invoice-amount { font-family: 'Orbitron', sans-serif; font-size: 14px; font-weight: 600; color: rgba(255,255,255,0.9); text-align: right; flex-shrink: 0; }
+.invoice-due { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: rgba(255,255,255,0.4); text-align: right; margin-top: 2px; letter-spacing: .04em; }
+.invoice-row.urgent .invoice-due { color: #E8B86D; }
+.invoice-row.overdue .invoice-due { color: #ff8a5c; }
+
+.wolf-empty-banner {
+  margin: 16px 20px; padding: 14px 18px;
+  background: linear-gradient(135deg, rgba(184, 197, 214, 0.05) 0%, rgba(232, 184, 109, 0.04) 100%);
+  border: 1px dashed rgba(232, 184, 109, 0.2); border-radius: 10px;
+  display: flex; align-items: center; gap: 12px;
+}
+.wolf-empty-banner-icon { width: 24px; height: 24px; flex-shrink: 0; color: rgba(232, 184, 109, 0.7); }
+.wolf-empty-banner-text { font-family: 'Rajdhani', sans-serif; font-size: 12.5px; color: rgba(255,255,255,0.55); line-height: 1.5; }
+.wolf-empty-banner-text strong { color: #E8B86D; font-weight: 600; }
+
+/* ========== SKELETON WORKSPACE ========== */
+.skeleton-content { flex: 1; display: flex; align-items: center; justify-content: center; flex-direction: column; padding: 40px; }
+.skeleton-icon {
+  width: 80px; height: 80px; border-radius: 18px;
+  background: linear-gradient(135deg, var(--ws-col, #7C6EF5) 0%, var(--ws-col2, #5a4fd4) 100%);
+  box-shadow: 0 8px 40px var(--ws-glow, rgba(124,110,245,0.4));
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Orbitron', sans-serif; font-size: 32px; font-weight: 700;
+  color: rgba(255,255,255,0.95); margin-bottom: 24px; position: relative; overflow: hidden;
+  animation: skeletonPulse 3s ease-in-out infinite;
+}
+.skeleton-icon svg { width: 44px; height: 44px; color: rgba(255,255,255,0.95); }
+.skeleton-icon::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(135deg, rgba(255,255,255,0.25) 0%, transparent 60%); }
+@keyframes skeletonPulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 8px 40px var(--ws-glow, rgba(124,110,245,0.4)); }
+  50% { transform: scale(1.04); box-shadow: 0 12px 60px var(--ws-glow, rgba(124,110,245,0.55)); }
+}
+.skeleton-title { font-family: 'Orbitron', sans-serif; font-size: 22px; font-weight: 700; letter-spacing: .2em; color: rgba(255,255,255,0.9); text-transform: uppercase; margin-bottom: 8px; }
+.skeleton-sub { font-family: 'Rajdhani', sans-serif; font-size: 14px; color: rgba(255,255,255,0.4); letter-spacing: .06em; margin-bottom: 28px; }
+.skeleton-tag { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: .25em; color: rgba(255,255,255,0.35); text-transform: uppercase; padding: 8px 18px; border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; background: rgba(255,255,255,0.03); margin-bottom: 32px; }
+.skeleton-stats { display: flex; gap: 24px; margin-top: 8px; }
+.skeleton-stat { text-align: center; padding: 14px 22px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; min-width: 100px; }
+.skeleton-stat-value { font-family: 'Orbitron', sans-serif; font-size: 18px; font-weight: 700; color: var(--ws-col, rgba(124,110,245,0.9)); margin-bottom: 4px; }
+.skeleton-stat-label { font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: .12em; color: rgba(255,255,255,0.3); text-transform: uppercase; }
+
+/* ========== MOBILE RESPONSIVE ========== */
+@media (max-width: 900px) {
+  #workspace { left: 16px; right: 16px; top: 60px; bottom: 60px; }
+  .talk-history { width: 160px; }
+}
+@media (max-width: 640px) {
+  #hud-top { padding: 0 14px; height: 40px; }
+  .hud-line { width: 60px; }
+  #workspace { left: 8px; right: 8px; top: 50px; bottom: 50px; }
+  .talk-history { width: 130px; }
+  .talk-history-list { padding: 4px; }
+  .history-item { padding: 7px 9px; }
+  .history-title { font-size: 11.5px; }
+  .talk-messages { padding: 12px 14px; }
+  .talk-msg { max-width: 90%; }
+  .talk-input-area { padding: 10px 12px; }
+}
+
+/* ========== PORTRAIT MOBILE (dikey) ========== */
+@media (max-width: 600px) and (orientation: portrait),
+       (max-height: 700px) and (max-width: 500px) {
+
+  html, body { overflow: hidden; height: 100%; width: 100%; }
+  canvas { position: fixed !important; }
+
+  #hud-top { padding: 0 12px; height: 36px; z-index: 30; }
+  .hud-left, .hud-right { gap: 8px; }
+  .hud-item { font-size: 7.5px; }
+  .hud-line { display: none; }
+
+  #corelabel {
+    display: block; font-size: 11px; letter-spacing: .25em;
+    margin-top: 60px; color: rgba(255,255,255,0.12);
+    text-shadow: 0 0 30px rgba(124,110,245,0.15);
+  }
+  #corelabel span { font-size: 8px; letter-spacing: .3em; color: rgba(255,255,255,0.06); }
+
+  #statusbar { bottom: 10px; font-size: 8px; gap: 8px; letter-spacing: .12em; }
+  #drag-hint { display: none; }
+
+  #overlay { position: fixed; top:0; left:0; right:0; bottom:0; overflow:visible; pointer-events:none; z-index:10; }
+
+  /* Daha küçük, yarı saydam */
+  .mod {
+    width: 150px !important;
+    padding: 12px 14px !important;
+    border-radius: 12px !important;
+    background: linear-gradient(145deg, rgba(255,255,255,0.025) 0%, rgba(255,255,255,0.005) 100%) !important;
+    backdrop-filter: blur(14px) saturate(1.2) !important;
+    -webkit-backdrop-filter: blur(14px) saturate(1.2) !important;
+    border: 1px solid rgba(255,255,255,0.06) !important;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.04) !important;
+    transform: translate(-50%,-50%) !important;
+    transform-style: flat !important;
+  }
+  .mod::before { opacity: 0.3 !important; }
+  .mod::after { display: none !important; }
+
+  .mod:hover {
+    transform: translate(-50%,-50%) scale(1.03) !important;
+    background: linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.015) 100%) !important;
+    border-color: rgba(255,255,255,0.15) !important;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.45), 0 0 30px var(--glow, rgba(124,110,245,0.2)) !important;
+  }
+  .mod.active {
+    transform: translate(-50%,-50%) scale(1.03) !important;
+    background: linear-gradient(145deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.02) 100%) !important;
+    border-color: var(--col, rgba(124,110,245,0.5)) !important;
+    box-shadow: 0 0 50px var(--glow, rgba(124,110,245,0.3)), 0 0 80px var(--glow2, rgba(124,110,245,0.1)) !important;
+  }
+  .mod.dragging { transform: translate(-50%,-50%) scale(0.95) !important; opacity: 0.5 !important; }
+  .mod.drop-target { transform: translate(-50%,-50%) scale(1.05) !important; }
+
+  .mod-header { gap: 8px; }
+  .mod-icon { width: 26px; height: 26px; font-size: 9px; border-radius: 7px; }
+  .mod-name { font-size: 9px; letter-spacing: .08em; }
+  .mod-sub { font-size: 10px; margin-top: 3px; padding-left: 34px; }
+  .mod-bar-wrap { margin-top: 8px; }
+  .mod-stats { opacity: 1 !important; transform: none !important; padding-left: 34px; margin-top: 4px; }
+  .mod-stat { font-size: 7.5px; }
+
+  #workspace {
+    position: fixed !important; left: 0 !important; right: 0 !important;
+    top: 0 !important; bottom: 0 !important; border-radius: 0 !important;
+    border-left: none !important; border-right: none !important; z-index: 200 !important;
+  }
+  body.ws-open #overlay { pointer-events: none; }
+  body.ws-open .mod { display: none; }
+  body.ws-open #c { transform: none !important; }
+  body.ws-open #corelabel { display: none; }
+
+  #ws-header { padding: 12px 14px; }
+  #ws-icon { width: 30px; height: 30px; border-radius: 8px; }
+  #ws-title { font-size: 12px; letter-spacing: .1em; }
+  #ws-sub { font-size: 11px; }
+  #ws-close { width: 32px; height: 32px; border-radius: 8px; }
+
+  .talk-history { display: none !important; }
+  .talk-main { width: 100%; }
+  .talk-messages { padding: 10px 12px; gap: 10px; }
+  .talk-msg { max-width: 92%; }
+  .talk-msg-bubble { padding: 9px 12px; font-size: 13px; }
+  .talk-input-area { padding: 8px 10px 10px; gap: 8px; }
+  .talk-input { font-size: 13px; padding: 9px 11px; min-height: 38px; }
+  .talk-send { width: 38px; height: 38px; border-radius: 9px; }
+
+  .wolf-summary-bar { flex-direction: column; gap: 8px; padding: 12px 14px; }
+  .wolf-summary-card { padding: 10px 12px; }
+  .wolf-summary-value { font-size: 15px; }
+  .wolf-tab { padding: 8px 10px; font-size: 8.5px; }
+  .wolf-list { padding: 10px 14px 16px; }
+  .invoice-row { padding: 10px 10px; gap: 10px; }
+  .invoice-name { font-size: 12.5px; }
+  .invoice-amount { font-size: 13px; }
+
+  .skeleton-content { padding: 24px 16px; }
+  .skeleton-icon { width: 60px; height: 60px; border-radius: 14px; margin-bottom: 16px; }
+  .skeleton-icon svg { width: 32px; height: 32px; }
+  .skeleton-title { font-size: 17px; letter-spacing: .14em; }
+  .skeleton-sub { font-size: 12px; margin-bottom: 20px; }
+  .skeleton-tag { font-size: 9px; padding: 6px 14px; margin-bottom: 24px; }
+  .skeleton-stats { gap: 10px; flex-wrap: wrap; justify-content: center; }
+  .skeleton-stat { padding: 10px 14px; min-width: 80px; }
+  .skeleton-stat-value { font-size: 15px; }
+}
+</style>
+</head>
+<body>
+
+<canvas id="bg"></canvas>
+<canvas id="c"></canvas>
+
+<div id="hud-top">
+  <div class="hud-left">
+    <div class="hud-item">SYS <span>ONLINE</span></div>
+    <div class="hud-line"></div>
+    <div class="hud-item">LAT <span>41.0082°N</span></div>
+  </div>
+  <div class="hud-right">
+    <div class="hud-item">UPTIME <span id="uptime">00:00:00</span></div>
+    <div class="hud-line"></div>
+    <div class="hud-item">SEC <span>CLASS-A</span></div>
+  </div>
+</div>
+
+<div id="overlay"></div>
+
+<div id="drag-hint">— MODÜL TAŞI: SÜRÜKLE & BIRAK —</div>
+
+<!-- WORKSPACE PANEL -->
+<div id="workspace">
+  <div id="ws-header">
+    <div id="ws-icon"></div>
+    <div id="ws-title-wrap">
+      <div id="ws-title">MODULE</div>
+      <div id="ws-sub">subtitle</div>
+    </div>
+    <button id="ws-close" title="Kapat (Esc)">
+      <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div id="ws-body"></div>
+</div>
+
+<div id="statusbar">
+  <div class="pulse-dot"></div>
+  AMBIENT — DİNLEME MODU
+  <div class="sep"></div>
+  <span id="clock">00:00:00</span>
+</div>
+
+<div id="corelabel">
+  THEIA<br>
+  <span>VAULT CORE</span>
+</div>
+
+<script>
+// ========== CANVAS SETUP ==========
+const bg     = document.getElementById('bg');
+const bc     = bg.getContext('2d');
+const canvas = document.getElementById('c');
+const ctx    = canvas.getContext('2d');
+
+let W, H, cx, cy, R, t = 0, activeModule = null;
+let particles = [];
+let ambientT = 0;
+let mouseX = 0, mouseY = 0;
+
+// SVG ikonlar
+const ICONS = {
+  pigeon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12c0-3 2-5 5-5 1.5 0 3 .5 4 1.5L14 7l3 1-2 2 2 3c0 3-2 6-6 6-4 0-7-3-7-7z"/><circle cx="7" cy="11" r=".6" fill="currentColor"/><path d="M14 7l2-3"/></svg>',
+  talk:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.5 7.2L4 21l1.8-5.5A8 8 0 1 1 21 12z"/><circle cx="9" cy="12" r=".7" fill="currentColor"/><circle cx="12" cy="12" r=".7" fill="currentColor"/><circle cx="15" cy="12" r=".7" fill="currentColor"/></svg>',
+  wolf:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8 L7 4 L9 7 L12 5 L15 7 L17 4 L20 8 L19 14 C19 17 16 20 12 20 C8 20 5 17 5 14 Z"/><path d="M9 12 L10 13" stroke-width="2.2"/><path d="M14 12 L15 13" stroke-width="2.2"/><path d="M11 16 L12 17 L13 16"/></svg>',
+};
+
+const MODS = [
+  { id:'wolf',   name:'WOLFSTREET', sub:'Finance watch',   col:'#B8C5D6', col2:'#E8B86D', angle:  0, icon:ICONS.wolf,   stats:'₺2.847 / 14 gün', svgIcon:true },
+  { id:'ritual', name:'RITUALS',    sub:'Streak tracker',  col:'#EF9F27', col2:'#ffd166', angle: 45, icon:'R',          stats:'Day 47 / 365' },
+  { id:'talk',   name:'THEIA TALK', sub:'Direct dialog',   col:'#C77DFF', col2:'#e0aaff', angle: 90, icon:ICONS.talk,   stats:'Claude Sonnet 4.6', svgIcon:true },
+  { id:'intent', name:'INTENT',     sub:'NL engine',       col:'#1D9E75', col2:'#4dd4a0', angle:135, icon:'I',          stats:'Latency: 42ms' },
+  { id:'guard',  name:'GATEKEEPER', sub:'Risk classifier', col:'#E85D24', col2:'#ff8a5c', angle:180, icon:'G',          stats:'Threat: LOW' },
+  { id:'vault',  name:'VAULT',      sub:'Memory store',    col:'#7C6EF5', col2:'#9b8fff', angle:225, icon:'V',          stats:'8.2TB / 12TB' },
+  { id:'pigeon', name:'PIGEON',     sub:'Mobile approve',  col:'#4FA8D5', col2:'#7dd3fc', angle:270, icon:ICONS.pigeon, stats:'Bot: Online', svgIcon:true },
+  { id:'talk',   name:'THEIA TALK', sub:'Direct dialog',   col:'#C77DFF', col2:'#e0aaff', angle:315, icon:ICONS.talk,   stats:'Claude Sonnet 4.6', svgIcon:true },
+];
+
+let nodes = [], synapses = [], stars = [];
+
+function hex2rgb(h) {
+  return [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)];
+}
+
+function resize() {
+  W = canvas.width = bg.width = window.innerWidth;
+  H = canvas.height = bg.height = window.innerHeight;
+  cx = W / 2; cy = H / 2;
+  R = Math.min(W, H) * 0.17;
+  drawBg();
+  layoutMods();
+  buildNodes();
+  buildSynapses();
+  buildStars();
+}
+
+// ========== BACKGROUND ==========
+function drawBg() {
+  bc.clearRect(0, 0, W, H);
+  const g = bc.createRadialGradient(cx, cy * 0.6, 0, cx, cy, Math.max(W, H));
+  g.addColorStop(0, '#120a25');
+  g.addColorStop(0.3, '#0a0618');
+  g.addColorStop(0.6, '#060310');
+  g.addColorStop(1, '#020105');
+  bc.fillStyle = g;
+  bc.fillRect(0, 0, W, H);
+
+  const nebulas = [
+    { x: cx * 0.3, y: cy * 0.4, r: Math.max(W,H)*0.4, col: 'rgba(124,110,245,0.03)' },
+    { x: cx * 1.6, y: cy * 0.7, r: Math.max(W,H)*0.35, col: 'rgba(93,202,165,0.02)' },
+    { x: cx * 0.8, y: cy * 1.3, r: Math.max(W,H)*0.3, col: 'rgba(232,93,36,0.015)' },
+  ];
+  nebulas.forEach(n => {
+    const ng = bc.createRadialGradient(n.x, n.y, 0, n.x, n.y, n.r);
+    ng.addColorStop(0, n.col); ng.addColorStop(1, 'transparent');
+    bc.fillStyle = ng; bc.fillRect(0, 0, W, H);
+  });
+
+  const vx = cx, vy = cy * 0.42;
+  bc.strokeStyle = 'rgba(124,110,245,0.04)';
+  bc.lineWidth = 0.5;
+  for (let i = 0; i < 24; i++) {
+    const y = vy + (H - vy) * (i / 23);
+    const spread = (y - vy) / (H - vy);
+    bc.beginPath(); bc.moveTo(cx - W * 0.8 * spread, y); bc.lineTo(cx + W * 0.8 * spread, y); bc.stroke();
+  }
+  for (let i = -10; i <= 10; i++) {
+    bc.beginPath(); bc.moveTo(vx, vy); bc.lineTo(cx + i * (W / 14), H); bc.stroke();
+  }
+}
+
+// ========== STARS ==========
+function buildStars() {
+  stars = [];
+  for (let i = 0; i < 200; i++) {
+    stars.push({
+      x: Math.random() * W, y: Math.random() * H * 0.6,
+      size: Math.random() * 1.5 + 0.3,
+      twinkle: Math.random() * Math.PI * 2,
+      speed: Math.random() * 0.02 + 0.005,
+      depth: Math.random(),
+    });
+  }
+}
+
+function drawStars() {
+  stars.forEach(s => {
+    s.twinkle += s.speed;
+    const alpha = (Math.sin(s.twinkle) + 1) * 0.5 * (0.3 + s.depth * 0.5);
+    const size  = s.size * (0.5 + s.depth * 0.5);
+    const sx = s.x + (mouseX - cx) * s.depth * 0.008;
+    const sy = s.y + (mouseY - cy) * s.depth * 0.008;
+    ctx.beginPath(); ctx.arc(sx, sy, size, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(220,210,255,${alpha})`; ctx.fill();
+    if (s.depth > 0.8 && Math.sin(s.twinkle) > 0.7) {
+      ctx.strokeStyle = `rgba(220,210,255,${alpha * 0.3})`;
+      ctx.lineWidth = 0.3;
+      ctx.beginPath(); ctx.moveTo(sx - size*3, sy); ctx.lineTo(sx + size*3, sy); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(sx, sy - size*3); ctx.lineTo(sx, sy + size*3); ctx.stroke();
+    }
+  });
+}
+
+// ========== MODULES ==========
+function isMobilePortrait() {
+  return window.innerWidth <= 600 && window.innerHeight > window.innerWidth;
+}
+
+function layoutMods() {
+  const orb = Math.min(W, H) * 0.38;
+  const mobile = isMobilePortrait();
+
+  if (mobile) {
+    const marginX = 16;
+    const hudBottom = 46;             // HUD altı + üst boşluk
+    const statusTop = 30;             // statusbar üst boşluğu
+    const modW = 150;                 // CSS'teki mobil mod genişliği
+    const modH = 110;                 // tahmini mod yüksekliği
+    const gap = 10;
+    const halfW = modW / 2;
+    const halfH = modH / 2;
+
+    const leftX = marginX + halfW;
+    const rightX = W - marginX - halfW;
+
+    const topY1 = hudBottom + halfH;
+    const topY2 = topY1 + modH + gap;
+
+    const bottomY2 = H - statusTop - halfH;
+    const bottomY1 = bottomY2 - modH - gap;
+
+    const positions = [
+      { bx: leftX,  by: topY1 },     // sol üst 1
+      { bx: leftX,  by: topY2 },     // sol üst 2
+      { bx: rightX, by: topY1 },     // sağ üst 1
+      { bx: rightX, by: topY2 },     // sağ üst 2
+      { bx: leftX,  by: bottomY1 },  // sol alt 1
+      { bx: leftX,  by: bottomY2 },  // sol alt 2
+      { bx: rightX, by: bottomY1 },  // sağ alt 1
+      { bx: rightX, by: bottomY2 },  // sağ alt 2
+    ];
+
+    MODS.forEach((m, i) => {
+      if (i < positions.length) {
+        m.bx = positions[i].bx;
+        m.by = positions[i].by;
+      }
+    });
+  } else {
+    MODS.forEach(m => {
+      const rad = (m.angle - 90) * Math.PI / 180;
+      m.bx = cx + orb * Math.cos(rad);
+      m.by = cy + orb * Math.sin(rad);
+    });
+  }
+
+  MODS.forEach(m => {
+    let el = document.getElementById('m-' + m.id);
+    if (!el) {
+      el = document.createElement('div');
+      el.className = 'mod';
+      el.id = 'm-' + m.id;
+      el.innerHTML = `
+        <div class="mod-header">
+          <div class="mod-icon ${m.svgIcon ? 'svg-icon' : ''}">${m.icon}</div>
+          <div class="mod-name">${m.name}</div>
+        </div>
+        <div class="mod-sub">${m.sub}</div>
+        <div class="mod-bar-wrap"><div class="mod-bar" id="bar-${m.id}"></div></div>
+        <div class="mod-stats"><div class="mod-stat"><span>${m.stats}</span></div></div>
+      `;
+      el.style.setProperty('--col',  m.col);
+      el.style.setProperty('--col2', m.col2);
+      el.style.setProperty('--glow',  m.col + '33');
+      el.style.setProperty('--glow2', m.col + '15');
+      el.addEventListener('click', (e) => {
+        if (dragState && dragState.dragging) return;
+        activateMod(m);
+        openWorkspace(m);
+      });
+      el.addEventListener('mousemove', (e) => {
+        const rect = el.getBoundingClientRect();
+        const x = (e.clientX - rect.left) / rect.width * 100;
+        const y = (e.clientY - rect.top) / rect.height * 100;
+        el.style.setProperty('--mx', x + '%');
+        el.style.setProperty('--my', y + '%');
+        el.style.setProperty('--rx', ((y - 50) * -0.3) + 'deg');
+        el.style.setProperty('--ry', ((x - 50) * 0.3) + 'deg');
+      });
+      el.addEventListener('mouseleave', () => {
+        el.style.setProperty('--rx', '0deg');
+        el.style.setProperty('--ry', '0deg');
+      });
+      document.getElementById('overlay').appendChild(el);
+    }
+    el.style.left = m.bx + 'px';
+    el.style.top  = m.by + 'px';
+  });
+}
+
+// ========== DRAG & DROP ==========
+let dragState = null;
+
+function initDragDrop() {
+  document.addEventListener('mousedown', onDragStart);
+  document.addEventListener('mousemove', onDragMove);
+  document.addEventListener('mouseup',   onDragEnd);
+  document.addEventListener('touchstart', (e) => {
+    const t = e.touches[0];
+    onDragStart({ clientX: t.clientX, clientY: t.clientY, target: e.target });
+  }, { passive: true });
+  document.addEventListener('touchmove', (e) => {
+    if (!dragState) return;
+    e.preventDefault();
+    const t = e.touches[0];
+    onDragMove({ clientX: t.clientX, clientY: t.clientY });
+  }, { passive: false });
+  document.addEventListener('touchend', (e) => {
+    if (!dragState) return;
+    const t = e.changedTouches[0];
+    onDragEnd({ clientX: t.clientX, clientY: t.clientY });
+  });
+}
+
+function onDragStart(e) {
+  const el = e.target.closest('.mod');
+  if (!el) return;
+  const mod = MODS.find(m => el.id === 'm-' + m.id);
+  if (!mod) return;
+  dragState = { mod, el, startX: e.clientX, startY: e.clientY, dragging: false, ghost: null };
+}
+
+function onDragMove(e) {
+  if (!dragState) return;
+  const dx = e.clientX - dragState.startX;
+  const dy = e.clientY - dragState.startY;
+  if (!dragState.dragging && Math.sqrt(dx*dx + dy*dy) < 6) return;
+  if (!dragState.dragging) {
+    dragState.dragging = true;
+    document.getElementById('drag-hint')?.classList.add('hidden');
+    dragState.el.classList.add('dragging');
+    const ghost = dragState.el.cloneNode(true);
+    ghost.id = 'drag-ghost-el';
+    ghost.classList.remove('dragging', 'active');
+    ghost.classList.add('drag-ghost');
+    ghost.style.width = dragState.el.offsetWidth + 'px';
+    const m = dragState.mod;
+    ghost.style.setProperty('--col',  m.col);
+    ghost.style.setProperty('--col2', m.col2);
+    ghost.style.setProperty('--glow', m.col + '55');
+    document.body.appendChild(ghost);
+    dragState.ghost = ghost;
+  }
+  dragState.ghost.style.left = e.clientX + 'px';
+  dragState.ghost.style.top  = e.clientY + 'px';
+  document.querySelectorAll('.mod').forEach(el => el.classList.remove('drop-target'));
+  const nearest = getNearestMod(e.clientX, e.clientY, dragState.mod);
+  if (nearest) document.getElementById('m-' + nearest.id)?.classList.add('drop-target');
+}
+
+function onDragEnd(e) {
+  if (!dragState) return;
+  if (dragState.dragging) {
+    if (dragState.ghost) dragState.ghost.remove();
+    dragState.el.classList.remove('dragging');
+    document.querySelectorAll('.mod').forEach(el => el.classList.remove('drop-target'));
+    const target = getNearestMod(e.clientX, e.clientY, dragState.mod);
+    if (target && target !== dragState.mod) swapMods(dragState.mod, target);
+  }
+  dragState = null;
+}
+
+function getNearestMod(mx, my, excludeMod) {
+  let best = null, bestDist = Infinity;
+  MODS.forEach(m => {
+    if (m === excludeMod) return;
+    const el = document.getElementById('m-' + m.id);
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const d = Math.sqrt((mx - (rect.left + rect.width/2))**2 + (my - (rect.top + rect.height/2))**2);
+    if (d < bestDist && d < 160) { bestDist = d; best = m; }
+  });
+  return best;
+}
+
+function swapMods(a, b) {
+  const tmp = a.angle; a.angle = b.angle; b.angle = tmp;
+  layoutMods();
+  setTimeout(() => {
+    ['m-' + a.id, 'm-' + b.id].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.classList.remove('swap-flash');
+      void el.offsetWidth;
+      el.classList.add('swap-flash');
+      el.addEventListener('animationend', () => el.classList.remove('swap-flash'), { once: true });
+    });
+  }, 50);
+}
+
+// ========== NODES & SYNAPSES ==========
+function buildNodes() {
+  nodes = [];
+  for (let i = 0; i < 160; i++) {
+    const theta = Math.random() * Math.PI * 2;
+    const phi   = Math.acos(2 * Math.random() - 1);
+    const r     = R * (0.2 + Math.random() * 0.8);
+    const z     = r * Math.cos(phi);
+    nodes.push({
+      x: cx + r * Math.sin(phi) * Math.cos(theta),
+      y: cy + r * Math.sin(phi) * Math.sin(theta),
+      z,
+      vx: (Math.random() - .5) * 0.05,
+      vy: (Math.random() - .5) * 0.05,
+      r: 1 + Math.random() * 1.8,
+      pulse: Math.random() * Math.PI * 2,
+      fire: 0, fireCol: null,
+      col: Math.random() > .5 ? [124,110,245] : [93,202,165],
+    });
+  }
+}
+
+function buildSynapses() {
+  synapses = [];
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i + 1; j < nodes.length; j++) {
+      const dx = nodes[i].x - nodes[j].x;
+      const dy = nodes[i].y - nodes[j].y;
+      const d  = Math.sqrt(dx*dx + dy*dy);
+      if (d < R * 0.48 && Math.random() > .45) synapses.push({ a: i, b: j, d });
+    }
+  }
+}
+
+// ========== ACTIVATION ==========
+function activateMod(m) {
+  activeModule = m;
+  document.querySelectorAll('.mod').forEach(e => e.classList.remove('active'));
+  const el = document.getElementById('m-' + m.id);
+  el.classList.add('active');
+
+  const bar = document.getElementById('bar-' + m.id);
+  bar.style.width = '100%';
+  setTimeout(() => bar.style.width = '0%', 3000);
+
+  document.getElementById('statusbar').innerHTML = `
+    <div class="pulse-dot" style="background:${m.col};box-shadow:0 0 8px ${m.col},0 0 16px ${m.col}"></div>
+    ${m.name} — VERİ AKIŞI
+    <div class="sep" style="background:${m.col}44"></div>
+    <span style="color:${m.col}88">${m.stats}</span>
+  `;
+
+  for (let k = 0; k < 36; k++) {
+    const tn = nodes[Math.floor(Math.random() * nodes.length)];
+    particles.push({
+      x: m.bx, y: m.by, tx: tn.x, ty: tn.y,
+      prog: 0, speed: .016 + Math.random() * .012,
+      col: m.col, node: tn, size: 3.2, delay: k * 22
+    });
+  }
+
+  nodes.forEach(n => {
+    if (Math.random() > .25) { n.fire = .9 + Math.random() * .1; n.fireCol = m.col; }
+  });
+
+  setTimeout(() => {
+    if (activeModule === m) {
+      activeModule = null;
+      document.getElementById('statusbar').innerHTML = `
+        <div class="pulse-dot"></div>
+        AMBIENT — DİNLEME MODU
+        <div class="sep"></div>
+        <span id="clock">${new Date().toLocaleTimeString('tr-TR')}</span>
+      `;
+      document.querySelectorAll('.mod').forEach(e => e.classList.remove('active'));
+    }
+  }, 3500);
+}
+
+function ambientFlow() {
+  ambientT++;
+  if (ambientT % 70 === 0) {
+    const m  = MODS[Math.floor(Math.random() * MODS.length)];
+    const tn = nodes[Math.floor(Math.random() * nodes.length)];
+    particles.push({
+      x: m.bx, y: m.by, tx: tn.x, ty: tn.y,
+      prog: 0, speed: .008, col: m.col, node: tn, size: 2, delay: 0, ambient: true
+    });
+  }
+}
+
+// ========== MAIN DRAW ==========
+function draw() {
+  t += .008;
+  ctx.clearRect(0, 0, W, H);
+  ambientFlow();
+  drawStars();
+
+  const orb = Math.min(W, H) * 0.38;
+
+  ctx.beginPath(); ctx.arc(cx, cy, orb, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(255,255,255,0.02)'; ctx.lineWidth = 0.5; ctx.stroke();
+
+  for (let i = 0; i < 60; i++) {
+    const a = (i / 60) * Math.PI * 2;
+    const len = i % 5 === 0 ? 8 : 4;
+    ctx.beginPath();
+    ctx.moveTo(cx + (orb - len) * Math.cos(a), cy + (orb - len) * Math.sin(a));
+    ctx.lineTo(cx + orb * Math.cos(a), cy + orb * Math.sin(a));
+    ctx.strokeStyle = i % 5 === 0 ? 'rgba(124,110,245,0.15)' : 'rgba(124,110,245,0.06)';
+    ctx.lineWidth = i % 5 === 0 ? 1 : 0.5; ctx.stroke();
+  }
+
+  ctx.beginPath(); ctx.arc(cx, cy, R * 1.25, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(140,110,240,0.05)'; ctx.lineWidth = 0.8; ctx.stroke();
+
+  ctx.beginPath(); ctx.arc(cx, cy, R * 0.85, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(140,110,240,0.03)'; ctx.lineWidth = 0.5; ctx.stroke();
+
+  MODS.forEach(m => {
+    const isActive = activeModule === m;
+    const isFaded  = activeModule && !isActive;
+    const [r, g, b] = hex2rgb(m.col);
+    const phase = Math.sin(t * 2.5 + m.angle * 0.05) * 0.5 + 0.5;
+    const baseAlpha = isActive ? 0.35 : (isFaded ? 0.05 : 0.12 + phase * 0.06);
+
+    ctx.beginPath(); ctx.moveTo(m.bx, m.by); ctx.lineTo(cx, cy);
+    ctx.strokeStyle = `rgba(${r},${g},${b},${baseAlpha})`;
+    ctx.lineWidth = isActive ? 1.8 : 0.8; ctx.stroke();
+
+    ctx.beginPath(); ctx.moveTo(m.bx, m.by); ctx.lineTo(cx, cy);
+    ctx.strokeStyle = `rgba(${r},${g},${b},${baseAlpha * 0.3})`;
+    ctx.lineWidth = isActive ? 4 : 2; ctx.stroke();
+
+    if (!m._flowProg) m._flowProg = Math.random();
+    m._flowProg += isActive ? 0.012 : 0.006;
+    if (m._flowProg > 1) m._flowProg = 0;
+    const fp  = m._flowProg;
+    const fpx = m.bx + (cx - m.bx) * fp;
+    const fpy = m.by + (cy - m.by) * fp;
+    const fade = Math.sin(fp * Math.PI);
+    const da   = (isActive ? 1 : (isFaded ? 0.3 : 0.7)) * fade;
+    ctx.beginPath(); ctx.arc(fpx, fpy, isActive ? 4 : 2.5, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(${r},${g},${b},${da * 0.4})`; ctx.fill();
+    ctx.beginPath(); ctx.arc(fpx, fpy, isActive ? 2 : 1.3, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(${r},${g},${b},${da})`; ctx.fill();
+
+    const fp2  = (m._flowProg + 0.5) % 1;
+    const fpx2 = m.bx + (cx - m.bx) * fp2;
+    const fpy2 = m.by + (cy - m.by) * fp2;
+    const fade2 = Math.sin(fp2 * Math.PI);
+    const da2   = (isActive ? 0.8 : (isFaded ? 0.2 : 0.5)) * fade2;
+    ctx.beginPath(); ctx.arc(fpx2, fpy2, isActive ? 3 : 2, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(${r},${g},${b},${da2 * 0.4})`; ctx.fill();
+    ctx.beginPath(); ctx.arc(fpx2, fpy2, isActive ? 1.6 : 1, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(${r},${g},${b},${da2})`; ctx.fill();
+  });
+
+  nodes.forEach(n => {
+    n.x += n.vx; n.y += n.vy;
+    const dx = n.x - cx, dy = n.y - cy;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    if (dist > R * 1.05) {
+      n.vx *= -.8; n.vy *= -.8;
+      n.x = cx + dx / dist * R * .98;
+      n.y = cy + dy / dist * R * .98;
+    }
+    if (dist < R * .18) { n.vx += dx * .003; n.vy += dy * .003; }
+    n.pulse += .016;
+    if (n.fire > 0) n.fire -= .012;
+  });
+
+  synapses.forEach(s => {
+    const a = nodes[s.a], b = nodes[s.b];
+    const avgZ = (a.z + b.z) / (R * 2) + .5;
+    let alpha = avgZ * .1 + .02;
+    const fire = Math.max(a.fire, b.fire);
+    if (fire > 0) alpha = Math.min(.7, alpha + fire * .55);
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+    if (fire > 0 && a.fireCol) {
+      const [r,g,bb] = hex2rgb(a.fireCol);
+      ctx.strokeStyle = `rgba(${r},${g},${bb},${alpha})`;
+    } else {
+      const [r,g,bb] = a.col;
+      ctx.strokeStyle = `rgba(${r},${g},${bb},${alpha})`;
+    }
+    ctx.lineWidth = .6; ctx.stroke();
+    if (Math.random() > 0.995) {
+      const prog = Math.random();
+      ctx.beginPath(); ctx.arc(a.x + (b.x - a.x)*prog, a.y + (b.y - a.y)*prog, 1.2, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fill();
+    }
+  });
+
+  if (Math.random() < .025) {
+    const n = nodes[Math.floor(Math.random() * nodes.length)];
+    n.fire = .6 + Math.random() * .3; n.fireCol = null;
+  }
+
+  const sortedNodes = [...nodes].sort((a, b) => a.z - b.z);
+  sortedNodes.forEach(n => {
+    const depth = (n.z / R + 1) * .5;
+    const pulse = (Math.sin(n.pulse) + 1) * .5;
+    let alpha = Math.pow(depth, 1.4) * .75 + .08 + pulse * .12;
+    let size  = n.r * (.5 + depth * 1.3);
+    if (n.fire > 0) { alpha = Math.min(1, alpha + n.fire); size *= (1 + n.fire * 1.6); }
+
+    if (depth > 0.6) {
+      ctx.beginPath(); ctx.arc(n.x, n.y, size * 3, 0, Math.PI*2);
+      const [r,g,bb] = n.fireCol && n.fire > 0 ? hex2rgb(n.fireCol) : n.col;
+      ctx.fillStyle = `rgba(${r},${g},${bb},${alpha * 0.08})`; ctx.fill();
+    }
+    if (depth > .5) {
+      ctx.beginPath(); ctx.arc(n.x + 2, n.y + 2, size * .7, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(0,0,0,${depth * .2})`; ctx.fill();
+    }
+    const [r,g,bb] = n.fireCol && n.fire > 0 ? hex2rgb(n.fireCol) : n.col;
+    ctx.beginPath(); ctx.arc(n.x, n.y, size, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(${r},${g},${bb},${alpha})`; ctx.fill();
+    if (size > 1.5) {
+      ctx.beginPath(); ctx.arc(n.x - size*0.3, n.y - size*0.3, size*0.3, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(255,255,255,${alpha * 0.4})`; ctx.fill();
+    }
+  });
+
+  for (let i = 4; i >= 1; i--) {
+    const ox = cx - R * .1, oy = cy - R * .15;
+    const gr = ctx.createRadialGradient(ox, oy, R * .04 * i, cx, cy, R * (.5 + i * .18));
+    const pulse = Math.sin(t * .55 + i * 0.8) * .02 + .035;
+    gr.addColorStop(0, `rgba(180,160,255,${pulse * 2.5 / i})`);
+    gr.addColorStop(.4, `rgba(140,110,240,${pulse * 1.2 / i})`);
+    gr.addColorStop(.8, `rgba(100,70,200,${pulse * 0.4 / i})`);
+    gr.addColorStop(1, 'rgba(80,60,180,0)');
+    ctx.beginPath(); ctx.arc(cx, cy, R * (.5 + i * .18), 0, Math.PI*2);
+    ctx.fillStyle = gr; ctx.fill();
+  }
+
+  const spec = ctx.createRadialGradient(cx - R*.35, cy - R*.4, 0, cx - R*.35, cy - R*.4, R*.55);
+  spec.addColorStop(0, `rgba(240,230,255,${.1 + Math.sin(t * .4) * .025})`);
+  spec.addColorStop(.5, `rgba(200,180,255,${.04 + Math.sin(t * .4) * .01})`);
+  spec.addColorStop(1, 'rgba(180,160,255,0)');
+  ctx.beginPath(); ctx.arc(cx, cy, R * 1.05, 0, Math.PI*2);
+  ctx.fillStyle = spec; ctx.fill();
+
+  ctx.beginPath(); ctx.arc(cx, cy, R * 0.3, 0, Math.PI * 2);
+  ctx.strokeStyle = `rgba(180,160,255,${0.08 + Math.sin(t) * 0.03})`;
+  ctx.lineWidth = 1.5; ctx.stroke();
+
+  particles = particles.filter(p => {
+    if (p.delay > 0) { p.delay--; return true; }
+    p.prog = Math.min(1, p.prog + p.speed);
+    const px = p.x + (p.tx - p.x) * p.prog;
+    const py = p.y + (p.ty - p.y) * p.prog;
+    const alpha = Math.sin(p.prog * Math.PI) * (p.ambient ? .6 : 1);
+    const [r,g,b] = hex2rgb(p.col.slice(0,7));
+    for (let ti = 1; ti <= 4; ti++) {
+      const tp = Math.max(0, p.prog - ti * 0.03);
+      ctx.beginPath(); ctx.arc(p.x + (p.tx - p.x)*tp, p.y + (p.ty - p.y)*tp, p.size * (1 - ti * 0.15), 0, Math.PI*2);
+      ctx.fillStyle = `rgba(${r},${g},${b},${alpha * (0.6 - ti * 0.12)})`; ctx.fill();
+    }
+    ctx.beginPath(); ctx.arc(px, py, p.size * (1 - p.prog * 0.2), 0, Math.PI*2);
+    ctx.fillStyle = `rgba(${r},${g},${b},${alpha})`; ctx.fill();
+    ctx.beginPath(); ctx.arc(px, py, p.size * 3, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(${r},${g},${b},${alpha * 0.15})`; ctx.fill();
+    if (p.prog >= 1 && p.node) { p.node.fire = 1; p.node.fireCol = p.col.slice(0,7); }
+    return p.prog < 1;
+  });
+
+  requestAnimationFrame(draw);
+}
+
+// ========== CLOCK & UPTIME ==========
+function updateClock() {
+  const el = document.getElementById('clock');
+  if (el) el.textContent = new Date().toLocaleTimeString('tr-TR');
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+let uptimeSec = 0;
+setInterval(() => {
+  uptimeSec++;
+  const h = String(Math.floor(uptimeSec / 3600)).padStart(2, '0');
+  const m = String(Math.floor((uptimeSec % 3600) / 60)).padStart(2, '0');
+  const s = String(uptimeSec % 60).padStart(2, '0');
+  document.getElementById('uptime').textContent = `${h}:${m}:${s}`;
+}, 1000);
+
+document.addEventListener('mousemove', (e) => { mouseX = e.clientX; mouseY = e.clientY; });
+window.addEventListener('resize', resize);
+resize();
+draw();
+initDragDrop();
+
+// ========== WORKSPACE SYSTEM ==========
+const workspace = document.getElementById('workspace');
+const wsIcon    = document.getElementById('ws-icon');
+const wsTitle   = document.getElementById('ws-title');
+const wsSub     = document.getElementById('ws-sub');
+const wsBody    = document.getElementById('ws-body');
+const wsClose   = document.getElementById('ws-close');
+
+let currentWsModule = null;
+let talkConversations = [];
+let activeConversationId = null;
+
+// ========== KONUŞMA KALICILIĞI ==========
+const CONV_STORAGE_KEY = 'theia_talk_conversations';
+const CONV_ACTIVE_KEY  = 'theia_talk_active_id';
+const CONV_MAX = 40; // maksimum saklanacak konuşma sayısı
+
+function saveConversations() {
+  try {
+    // Mesaj sayısını sınırla — çok büyümesin
+    const toSave = talkConversations.slice(0, CONV_MAX).map(c => ({
+      ...c,
+      messages: c.messages.slice(-80) // konuşma başına son 80 mesaj
+    }));
+    localStorage.setItem(CONV_STORAGE_KEY, JSON.stringify(toSave));
+    localStorage.setItem(CONV_ACTIVE_KEY, activeConversationId || '');
+  } catch(e) {
+    // localStorage dolu olabilir, sessizce geç
+    console.warn('Theia: konuşma kaydedilemedi', e);
+  }
+}
+
+function loadConversations() {
+  try {
+    const raw = localStorage.getItem(CONV_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) talkConversations = parsed;
+    }
+    activeConversationId = localStorage.getItem(CONV_ACTIVE_KEY) || null;
+    // Kayıtlı ID gerçekten var mı kontrol et
+    if (activeConversationId && !talkConversations.find(c => c.id === activeConversationId)) {
+      activeConversationId = talkConversations.length > 0 ? talkConversations[0].id : null;
+    }
+  } catch(e) {
+    talkConversations = [];
+    activeConversationId = null;
+  }
+}
+
+// Sayfa yüklenince konuşmaları geri al
+loadConversations();
+
+// ========== API KEY YÖNETİMİ ==========
+const STORAGE_KEY = 'theia_anthropic_key';
+
+function getApiKey() {
+  return localStorage.getItem(STORAGE_KEY) || '';
+}
+function saveApiKey(key) {
+  if (key) localStorage.setItem(STORAGE_KEY, key);
+  else localStorage.removeItem(STORAGE_KEY);
+}
+
+function renderKeySetup(onSave) {
+  const existing = getApiKey();
+  wsBody.innerHTML = `
+    <div class="skeleton-content">
+      <div class="skeleton-icon" style="font-size:28px">🔑</div>
+      <div class="skeleton-title">API KEY</div>
+      <div class="skeleton-sub" style="margin-bottom:20px">Anthropic API anahtarınızı girin</div>
+      <div style="width:100%;max-width:420px;display:flex;flex-direction:column;gap:10px">
+        <input
+          id="api-key-input"
+          type="password"
+          placeholder="sk-ant-..."
+          value="${escapeHtml(existing)}"
+          style="
+            background:rgba(255,255,255,0.04);
+            border:1px solid rgba(199,125,255,0.25);
+            border-radius:10px;
+            padding:12px 16px;
+            font-family:'JetBrains Mono',monospace;
+            font-size:13px;
+            color:rgba(255,255,255,0.85);
+            outline:none;
+            width:100%;
+            letter-spacing:.04em;
+          "
+        />
+        <div style="display:flex;gap:10px">
+          <button id="key-save" style="
+            flex:1;padding:11px;border-radius:9px;cursor:pointer;
+            background:linear-gradient(135deg,rgba(199,125,255,0.2),rgba(199,125,255,0.08));
+            border:1px solid rgba(199,125,255,0.35);
+            color:rgba(255,255,255,0.9);
+            font-family:'Orbitron',sans-serif;
+            font-size:10px;letter-spacing:.15em;text-transform:uppercase;
+            transition:all 0.2s;
+          ">Kaydet & Devam</button>
+          ${existing ? `<button id="key-clear" style="
+            padding:11px 16px;border-radius:9px;cursor:pointer;
+            background:rgba(232,93,36,0.1);
+            border:1px solid rgba(232,93,36,0.25);
+            color:rgba(255,140,100,0.9);
+            font-family:'Orbitron',sans-serif;
+            font-size:10px;letter-spacing:.1em;
+            transition:all 0.2s;
+          ">Sil</button>` : ''}
+        </div>
+        <div style="
+          font-family:'Rajdhani',sans-serif;font-size:11.5px;
+          color:rgba(255,255,255,0.3);text-align:center;line-height:1.6;
+          margin-top:4px;
+        ">
+          Key tarayıcınızda kalır — kod'a gömülmez, ağa gönderilmez.<br>
+          <span style="color:rgba(199,125,255,0.5)">claude-sonnet-4-6</span> modeli kullanılır.
+        </div>
+      </div>
+    </div>
+  `;
+
+  const input = document.getElementById('api-key-input');
+  input.addEventListener('focus', () => input.style.borderColor = 'rgba(199,125,255,0.5)');
+  input.addEventListener('blur',  () => input.style.borderColor = 'rgba(199,125,255,0.25)');
+
+  document.getElementById('key-save').addEventListener('click', () => {
+    const val = input.value.trim();
+    if (!val.startsWith('sk-ant-') && val !== '') {
+      input.style.borderColor = 'rgba(232,93,36,0.6)';
+      input.placeholder = 'sk-ant- ile başlamalı';
+      return;
+    }
+    saveApiKey(val);
+    onSave();
+  });
+
+  document.getElementById('key-clear')?.addEventListener('click', () => {
+    saveApiKey('');
+    onSave();
+  });
+}
+
+function openWorkspace(m) {
+  currentWsModule = m;
+  document.body.classList.add('ws-open');
+  workspace.style.setProperty('--ws-col',  m.col);
+  workspace.style.setProperty('--ws-col2', m.col2);
+  workspace.style.setProperty('--ws-glow', m.col + '55');
+  wsIcon.innerHTML = m.icon;
+  wsTitle.textContent = m.name;
+  wsSub.textContent   = m.sub;
+
+  if (m.id === 'talk') {
+    if (!getApiKey()) {
+      renderKeySetup(() => openWorkspace(m));
+    } else {
+      renderTalkWorkspace(talkConversations, activeConversationId,
+        (id) => { activeConversationId = id; saveConversations(); });
+    }
+  } else if (m.id === 'wolf') {
+    renderWolfWorkspace();
+  } else {
+    renderSkeletonWorkspace(m);
+  }
+  workspace.classList.add('open');
+}
+
+function closeWorkspace() {
+  workspace.classList.remove('open');
+  document.body.classList.remove('ws-open');
+  currentWsModule = null;
+}
+
+wsClose.addEventListener('click', closeWorkspace);
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && currentWsModule) closeWorkspace();
+});
+
+// ========== TALK/CHAT WORKSPACE ==========
+function renderTalkWorkspace(convList, activeCid, setActiveId) {
+  wsBody.innerHTML = `
+    <div class="talk-history">
+      <div class="talk-history-header">
+        <span>Geçmiş</span>
+        <button id="change-key-btn" style="background:none;border:none;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:8px;color:rgba(199,125,255,0.35);letter-spacing:.08em;text-transform:uppercase;padding:0;transition:color 0.2s" title="API Key">KEY ⚙</button>
+        <button class="talk-new-btn" id="talk-new">+ YENİ</button>
+      </div>
+      <div class="talk-history-list" id="talk-history-list"></div>
+    </div>
+    <div class="talk-main">
+      <div class="talk-messages" id="talk-messages"></div>
+      <div class="talk-input-area">
+        <textarea class="talk-input" id="talk-input" rows="1" placeholder="Theia ile konuş..."></textarea>
+        <button class="talk-send" id="talk-send">
+          <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('change-key-btn')?.addEventListener('click', () => {
+    renderKeySetup(() => openWorkspace(currentWsModule));
+  });
+
+  if (convList.length === 0) {
+    const id = createConversation(convList);
+    setActiveId(id);
+    activeCid = id;
+  } else if (!activeCid) {
+    setActiveId(convList[0].id);
+    activeCid = convList[0].id;
+  }
+
+  renderConvList(convList, activeCid, setActiveId);
+  renderConvMessages(convList, activeCid);
+
+  document.getElementById('talk-new').addEventListener('click', () => {
+    const id = createConversation(convList);
+    setActiveId(id);
+    activeCid = id;
+    renderConvList(convList, activeCid, setActiveId);
+    renderConvMessages(convList, activeCid);
+  });
+
+  const input = document.getElementById('talk-input');
+  const send  = document.getElementById('talk-send');
+
+  input.addEventListener('input', () => {
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+  });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doSend(convList, activeCid); }
+  });
+  send.addEventListener('click', () => doSend(convList, activeCid));
+}
+
+function createConversation(convList) {
+  const id = 'conv_' + Date.now();
+  convList.unshift({
+    id,
+    title: 'Yeni Konuşma',
+    messages: [{ role: 'theia', text: 'Sistem aktif. Sizi dinliyorum, Kaptan.' }],
+    updatedAt: Date.now()
+  });
+  saveConversations();
+  return id;
+}
+
+function renderConvList(convList, activeCid, setActiveId) {
+  const list = document.getElementById('talk-history-list');
+  if (!list) return;
+  if (convList.length === 0) {
+    list.innerHTML = '<div class="history-empty">Henüz konuşma yok</div>';
+    return;
+  }
+  list.innerHTML = convList.map(c => {
+    const d = new Date(c.updatedAt);
+    const ts = d.toLocaleString('tr-TR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+    return `<div class="history-item ${c.id === activeCid ? 'active' : ''}" data-id="${c.id}">
+      <div class="history-title">${escapeHtml(c.title)}</div>
+      <div class="history-meta">${ts} · ${c.messages.length} msg</div>
+    </div>`;
+  }).join('');
+  list.querySelectorAll('.history-item').forEach(el => {
+    el.addEventListener('click', () => {
+      setActiveId(el.dataset.id);
+      list.querySelectorAll('.history-item').forEach(e => e.classList.remove('active'));
+      el.classList.add('active');
+      renderConvMessages(convList, el.dataset.id);
+    });
+  });
+}
+
+function renderConvMessages(convList, activeCid) {
+  const area = document.getElementById('talk-messages');
+  if (!area) return;
+  const conv = convList.find(c => c.id === activeCid);
+  if (!conv) { area.innerHTML = ''; return; }
+  area.innerHTML = conv.messages.map(m => `
+    <div class="talk-msg ${m.role === 'user' ? 'user' : 'theia'}">
+      <div class="talk-msg-label">${m.role === 'user' ? 'KAPTAN' : 'THEIA'}</div>
+      <div class="talk-msg-bubble">${escapeHtml(m.text)}</div>
+    </div>
+  `).join('');
+  area.scrollTop = area.scrollHeight;
+}
+
+async function doSend(convList, activeCid) {
+  const input = document.getElementById('talk-input');
+  const text  = input?.value.trim();
+  if (!text) return;
+  const conv = convList.find(c => c.id === activeCid);
+  if (!conv) return;
+
+  conv.messages.push({ role: 'user', text });
+  if (conv.title === 'Yeni Konuşma') conv.title = text.slice(0, 38) + (text.length > 38 ? '…' : '');
+  conv.updatedAt = Date.now();
+  saveConversations();
+  input.value = ''; input.style.height = 'auto';
+  renderConvMessages(convList, activeCid);
+
+  const area = document.getElementById('talk-messages');
+  const typingEl = document.createElement('div');
+  typingEl.className = 'talk-msg theia'; typingEl.id = 'talk-typing';
+  typingEl.innerHTML = `<div class="talk-msg-label">THEIA</div><div class="talk-msg-bubble"><div class="typing-dots"><span></span><span></span><span></span></div></div>`;
+  area.appendChild(typingEl);
+  area.scrollTop = area.scrollHeight;
+
+  pulseModule('intent');
+
+  try {
+    let reply;
+
+    const apiKey = getApiKey();
+    if (apiKey) {
+      const history = conv.messages
+        .filter(m => m.role !== 'theia' || conv.messages.indexOf(m) > 0)
+        .slice(0, -1)
+        .map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text }));
+
+      const r = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 1024,
+          system: 'Sen Theia — Kaptan\'ın kişisel yapay zeka asistanısın. Theia Guard sisteminin bir parçasısın. Türkçe konuş. Kısa, net ve doğrudan ol.',
+          messages: [
+            ...history,
+            { role: 'user', content: text }
+          ]
+        })
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        throw new Error(err?.error?.message || `HTTP ${r.status}`);
+      }
+      const data = await r.json();
+      reply = data.content?.[0]?.text || JSON.stringify(data);
+
+    } else {
+      const r = await fetch('http://localhost:8000/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: text,
+          history: conv.messages.map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text }))
+        })
+      });
+      const data = await r.json();
+      reply = data.response || data.message || data.reply || JSON.stringify(data);
+    }
+
+    document.getElementById('talk-typing')?.remove();
+    conv.messages.push({ role: 'theia', text: reply });
+    conv.updatedAt = Date.now();
+    saveConversations();
+    renderConvMessages(convList, activeCid);
+    setTimeout(() => pulseModule('vault'), 700);
+
+  } catch (err) {
+    document.getElementById('talk-typing')?.remove();
+    conv.messages.push({ role: 'theia', text: '⚠ ' + err.message });
+    renderConvMessages(convList, activeCid);
+  }
+}
+
+// ========== WOLFSTREET ==========
+const mockInvoices = {
+  pending: [
+    { id:'inv1', sender:'CK Boğaziçi',   category:'CK', amount:1847, due:3,  status:'urgent',  detected:'2 gün önce' },
+    { id:'inv2', sender:'İGDAŞ',         category:'GZ', amount: 612, due:8,  status:'pending', detected:'4 gün önce' },
+    { id:'inv3', sender:'Türk Telekom',  category:'TT', amount: 389, due:12, status:'pending', detected:'1 hafta önce' },
+    { id:'inv4', sender:'Turkcell',      category:'GS', amount: 245, due:15, status:'pending', detected:'1 hafta önce' },
+    { id:'inv5', sender:'Spotify',       category:'SP', amount:  59, due:18, status:'pending', detected:'2 hafta önce' },
+  ],
+  paid: [
+    { id:'p1', sender:'CK Boğaziçi', category:'CK', amount:1623, due:'04 Mart' },
+    { id:'p2', sender:'İSKİ',        category:'SU', amount: 184, due:'01 Mart' },
+    { id:'p3', sender:'Netflix',     category:'NF', amount:  79, due:'28 Şub.' },
+  ],
+  subscriptions: [
+    { sender:'Spotify', amount:59,  freq:'Aylık', next:'15 Mayıs' },
+    { sender:'Netflix', amount:79,  freq:'Aylık', next:'28 Nisan' },
+    { sender:'iCloud',  amount:34,  freq:'Aylık', next:'05 Mayıs' },
+    { sender:'Adobe',   amount:289, freq:'Aylık', next:'12 Mayıs' },
+  ]
+};
+let wolfActiveTab = 'pending';
+
+function renderWolfWorkspace() {
+  const totalPending = mockInvoices.pending.reduce((s, i) => s + i.amount, 0);
+  const urgentCount  = mockInvoices.pending.filter(i => i.due <= 7).length;
+  const subTotal     = mockInvoices.subscriptions.reduce((s, i) => s + i.amount, 0);
+
+  wsBody.innerHTML = `
+    <div class="wolf-content">
+      <div class="wolf-summary-bar">
+        <div class="wolf-summary-card urgent">
+          <div class="wolf-summary-label">Ödenecek</div>
+          <div class="wolf-summary-value">₺${totalPending.toLocaleString('tr-TR')}</div>
+          <div class="wolf-summary-sub">${mockInvoices.pending.length} fatura</div>
+        </div>
+        <div class="wolf-summary-card">
+          <div class="wolf-summary-label">Acil (≤7 gün)</div>
+          <div class="wolf-summary-value">${urgentCount}</div>
+          <div class="wolf-summary-sub">yaklaşıyor</div>
+        </div>
+        <div class="wolf-summary-card">
+          <div class="wolf-summary-label">Abonelik/ay</div>
+          <div class="wolf-summary-value">₺${subTotal}</div>
+          <div class="wolf-summary-sub">${mockInvoices.subscriptions.length} aktif</div>
+        </div>
+      </div>
+      <div class="wolf-empty-banner">
+        <svg class="wolf-empty-banner-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><circle cx="12" cy="16" r=".5" fill="currentColor"/></svg>
+        <div class="wolf-empty-banner-text">
+          <strong>Demo veri.</strong> Gmail entegrasyonu için backend kurulumu gerekli.
+        </div>
+      </div>
+      <div class="wolf-tabs">
+        <button class="wolf-tab ${wolfActiveTab==='pending'?'active':''}" data-tab="pending">Bekleyen</button>
+        <button class="wolf-tab ${wolfActiveTab==='paid'?'active':''}" data-tab="paid">Ödendi</button>
+        <button class="wolf-tab ${wolfActiveTab==='subs'?'active':''}" data-tab="subs">Abonelikler</button>
+      </div>
+      <div class="wolf-list" id="wolf-list"></div>
+    </div>
+  `;
+
+  renderWolfList();
+  document.querySelectorAll('.wolf-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      wolfActiveTab = tab.dataset.tab;
+      document.querySelectorAll('.wolf-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      renderWolfList();
+    });
+  });
+}
+
+function renderWolfList() {
+  const list = document.getElementById('wolf-list');
+  if (!list) return;
+  if (wolfActiveTab === 'pending') {
+    list.innerHTML = mockInvoices.pending.map(inv => {
+      const cls = inv.due <= 3 ? 'overdue' : (inv.due <= 7 ? 'urgent' : '');
+      return `<div class="invoice-row ${cls}">
+        <div class="invoice-icon">${inv.category}</div>
+        <div class="invoice-main"><div class="invoice-name">${inv.sender}</div><div class="invoice-meta">${inv.detected}</div></div>
+        <div><div class="invoice-amount">₺${inv.amount.toLocaleString('tr-TR')}</div><div class="invoice-due">${inv.due <= 0 ? 'GECİKMİŞ' : inv.due + ' gün'}</div></div>
+      </div>`;
+    }).join('');
+  } else if (wolfActiveTab === 'paid') {
+    list.innerHTML = mockInvoices.paid.map(inv => `
+      <div class="invoice-row" style="opacity:0.6">
+        <div class="invoice-icon">${inv.category}</div>
+        <div class="invoice-main"><div class="invoice-name">${inv.sender}</div><div class="invoice-meta">Ödendi: ${inv.due}</div></div>
+        <div><div class="invoice-amount">₺${inv.amount.toLocaleString('tr-TR')}</div><div class="invoice-due">✓ TAMAM</div></div>
+      </div>`).join('');
+  } else {
+    list.innerHTML = mockInvoices.subscriptions.map(s => `
+      <div class="invoice-row">
+        <div class="invoice-icon">↻</div>
+        <div class="invoice-main"><div class="invoice-name">${s.sender}</div><div class="invoice-meta">${s.freq} · ${s.next}</div></div>
+        <div><div class="invoice-amount">₺${s.amount}</div><div class="invoice-due">/ ay</div></div>
+      </div>`).join('');
+  }
+}
+
+// ========== SKELETON ==========
+function renderSkeletonWorkspace(m) {
+  const presets = {
+    vault:  [{value:'8.2 TB', label:'Used'},    {value:'12 TB', label:'Capacity'}, {value:'1,247', label:'Memories'}],
+    guard:  [{value:'LOW',   label:'Threat'},   {value:'42',   label:'Today'},    {value:'0',     label:'Blocked'}],
+    intent: [{value:'42 ms', label:'Latency'},  {value:'98.4%',label:'Accuracy'}, {value:'Groq',  label:'Engine'}],
+    ritual: [{value:'47',   label:'Day'},       {value:'365',  label:'Goal'},     {value:'12.8%', label:'Progress'}],
+    audit:  [{value:'1,247',label:'Events'},    {value:'24h',  label:'Window'},   {value:'∞',     label:'Retention'}],
+    pigeon: [{value:'Online',label:'Status'},   {value:'8',    label:'Pending'},  {value:'247',   label:'Approved'}],
+  };
+  const stats = presets[m.id] || [{value:'—', label:'No data'}];
+  wsBody.innerHTML = `
+    <div class="skeleton-content">
+      <div class="skeleton-icon">${m.icon}</div>
+      <div class="skeleton-title">${m.name}</div>
+      <div class="skeleton-sub">${m.sub}</div>
+      <div class="skeleton-tag">YAKINDA · IN DEVELOPMENT</div>
+      <div class="skeleton-stats">
+        ${stats.map(s => `<div class="skeleton-stat"><div class="skeleton-stat-value">${s.value}</div><div class="skeleton-stat-label">${s.label}</div></div>`).join('')}
+      </div>
+    </div>
+  `;
+}
+
+// ========== HELPERS ==========
+function pulseModule(id) {
+  const m = MODS.find(m => m.id === id);
+  if (m) activateMod(m);
+}
+
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+</script>
+</body>
+</html>
+```

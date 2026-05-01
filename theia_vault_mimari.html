@@ -266,16 +266,17 @@ h1 span { color:var(--purple); }
 
 <!-- HEADER -->
 <div class="header">
-  <div class="eyebrow">MİMARİ HARİTA · NİSAN 2026</div>
+  <div class="eyebrow">MİMARİ HARİTA · MAYIS 2026</div>
   <h1>THEIA <span>GUARD</span></h1>
-  <div class="header-sub">Sistem Mimarisi & Bağımlılık Haritası — v0.8</div>
+  <div class="header-sub">Sistem Mimarisi & Bağımlılık Haritası — v0.9</div>
   <div class="badges">
     <div class="badge-item on">✓ Telegram Bot — Aktif</div>
     <div class="badge-item on">✓ FastAPI — Port 8000</div>
     <div class="badge-item on">✓ HUD — deepwebtheia.html</div>
+    <div class="badge-item on">✓ Supabase Sync — Aktif</div>
     <div class="badge-item">Python 3.13</div>
     <div class="badge-item">SQLite · theia.db</div>
-    <div class="badge-item warn">⏳ Rust kurulumu devam</div>
+    <div class="badge-item">225 entry migrated</div>
   </div>
 </div>
 
@@ -451,7 +452,8 @@ h1 span { color:var(--purple); }
     <div class="dep-row"><div class="dep-src">agents/memory_agent.py</div><div class="dep-arr">→</div><div class="dep-targets"><div class="dep-t db">core.db</div><div class="dep-t">memory.vault_api</div></div></div>
     <div class="dep-row"><div class="dep-src">agents/summarizer.py</div><div class="dep-arr">→</div><div class="dep-targets"><div class="dep-t db">core.db</div><div class="dep-t">memory.vault_api</div><div class="dep-t ext">anthropic (Haiku)</div></div></div>
     <div class="dep-row"><div class="dep-src">api.py</div><div class="dep-arr">→</div><div class="dep-targets"><div class="dep-t agent">memory_agent</div><div class="dep-t agent">web_agent</div><div class="dep-t db">core.db</div><div class="dep-t">memory.vault_api</div><div class="dep-t ext">fastapi</div><div class="dep-t ext">edge-tts</div></div></div>
-    <div class="dep-row"><div class="dep-src">memory/vault_api.py</div><div class="dep-arr">→</div><div class="dep-targets"><div class="dep-t db">core.db</div><div class="dep-t">memory.permissions</div></div></div>
+    <div class="dep-row"><div class="dep-src">memory/vault_api.py</div><div class="dep-arr">→</div><div class="dep-targets"><div class="dep-t db">core.db</div><div class="dep-t">memory.permissions</div><div class="dep-t agent">supabase_sync</div></div></div>
+    <div class="dep-row"><div class="dep-src">supabase_sync.py</div><div class="dep-arr">→</div><div class="dep-targets"><div class="dep-t ext">httpx</div><div class="dep-t ext">Supabase REST API</div></div></div>
   </div>
 </div>
 
@@ -543,6 +545,7 @@ h1 span { color:var(--purple); }
     <div class="stack-card"><div class="stack-layer">Telegram</div><div class="stack-tech">PTB 22.7</div><div class="stack-note">python-telegram-bot</div></div>
     <div class="stack-card"><div class="stack-layer">HTTP API</div><div class="stack-tech">FastAPI</div><div class="stack-note">uvicorn · port 8000</div></div>
     <div class="stack-card"><div class="stack-layer">Veritabanı</div><div class="stack-tech">SQLite</div><div class="stack-note">~/theia/theia.db</div></div>
+    <div class="stack-card"><div class="stack-layer">Bulut Backup</div><div class="stack-tech">Supabase</div><div class="stack-note">fire-and-forget sync · 225 entry</div></div>
     <div class="stack-card"><div class="stack-layer">HUD Kalıcılık</div><div class="stack-tech">localStorage</div><div class="stack-note">max 40 konuşma / 80 msg</div></div>
     <div class="stack-card"><div class="stack-layer">TTS</div><div class="stack-tech">edge-tts</div><div class="stack-note">Neural Türkçe ses</div></div>
     <div class="stack-card"><div class="stack-layer">Ağ Tüneli</div><div class="stack-tech">Tailscale</div><div class="stack-note">Android → dışarıdan erişim</div></div>
@@ -559,7 +562,7 @@ h1 span { color:var(--purple); }
     <div class="rm-item rm-done"><div class="rm-num">4</div><div class="rm-text"><div class="rm-title">CHAT modülü kaldırıldı</div><div class="rm-desc">Talk modülüyle birleştirildi, temizlendi</div></div><span class="bx bx-ok"><span class="bx-dot"></span>Tamam</span></div>
     <div class="rm-item rm-done"><div class="rm-num">5</div><div class="rm-text"><div class="rm-title">Talk localStorage kalıcılığı</div><div class="rm-desc">Konuşmalar sayfa kapansa da kaybolmuyor</div></div><span class="bx bx-ok"><span class="bx-dot"></span>Tamam</span></div>
     <div class="rm-item rm-done"><div class="rm-num">6</div><div class="rm-text"><div class="rm-title">deepwebtheia.html → static/ klasörü</div><div class="rm-desc">localhost:8000/static/deepwebtheia.html aktif</div></div><span class="bx bx-ok"><span class="bx-dot"></span>Tamam</span></div>
-    <div class="rm-item rm-wip"><div class="rm-num">7</div><div class="rm-text"><div class="rm-title">Termux — Rust + anthropic kurulumu</div><div class="rm-desc">pkg install rust devam ediyor; anthropic bundan sonra</div></div><span class="bx bx-wip"><span class="bx-dot"></span>Devam</span></div>
+    <div class="rm-item rm-done"><div class="rm-num">7</div><div class="rm-text"><div class="rm-title">Supabase bulut backup</div><div class="rm-desc">supabase_sync.py — vault_api her write'ta Supabase'e fire-and-forget push ediyor. 225 entry migrate edildi.</div></div><span class="bx bx-ok"><span class="bx-dot"></span>Tamam</span></div>
     <div class="rm-item rm-pend"><div class="rm-num">8</div><div class="rm-text"><div class="rm-title">Pigeon workspace UI</div><div class="rm-desc">Bot hazır, onay kuyruğu var — sadece HUD UI eksik</div></div><span class="bx bx-mock"><span class="bx-dot"></span>Beklemede</span></div>
     <div class="rm-item rm-last"><div class="rm-num">9</div><div class="rm-text"><div class="rm-title">WolfStreet — Gmail entegrasyonu</div><div class="rm-desc">En karmaşık adım — fatura otomasyonu için Gmail API</div></div><span class="bx bx-dead"><span class="bx-dot"></span>En Son</span></div>
   </div>
@@ -568,13 +571,13 @@ h1 span { color:var(--purple); }
 <!-- 12. DİKKAT NOKTALARI -->
 <div class="section">
   <div class="sec-title"><div class="sec-num">12</div> Dikkat Noktaları</div>
-  <div class="alert alert-warn">
-    <div class="alert-icon">⚠</div>
-    <div class="alert-text"><strong>api.py vs theia_api.py:</strong> İki ayrı API dosyası mevcut. <code>api.py</code> aktif (429 satır), <code>theia_api.py</code> (311 satır) paralel duruyor. Arşivlenmeli.</div>
+  <div class="alert alert-success">
+    <div class="alert-icon">✓</div>
+    <div class="alert-text"><strong>theia_api.py arşivlendi:</strong> <code>_archive/</code> altına taşındı. <code>api.py</code> tek aktif HTTP katmanı.</div>
   </div>
-  <div class="alert alert-warn">
-    <div class="alert-icon">⚠</div>
-    <div class="alert-text"><strong>Kod tekrarı — message.py vs api.py:</strong> <code>_MEM_SAVE_RE</code>, <code>_build_system()</code> her iki dosyada da tanımlı. İki yerde güncelleme riski — ilerleyen süreçte sessiz hata üretebilir.</div>
+  <div class="alert alert-success">
+    <div class="alert-icon">✓</div>
+    <div class="alert-text"><strong>Kod tekrarı çözüldü:</strong> <code>_MEM_SAVE_RE</code> ve <code>_build_system()</code> <code>core/shared.py</code>'ye taşındı. message.py ve api.py ortak modülden import ediyor.</div>
   </div>
   <div class="alert alert-warn">
     <div class="alert-icon">⚠</div>
@@ -583,6 +586,10 @@ h1 span { color:var(--purple); }
   <div class="alert alert-info">
     <div class="alert-icon">ℹ</div>
     <div class="alert-text"><strong>memory/permissions.py + migration_script.py:</strong> Aktif kullanımda değil. permissions tek kullanıcılı sistemde erken soyutlama; migration DB stable olduktan sonra arşivlenebilir.</div>
+  </div>
+  <div class="alert alert-success">
+    <div class="alert-icon">✓</div>
+    <div class="alert-text"><strong>Supabase bulut backup aktif (Mayıs 2026):</strong> <code>supabase_sync.py</code> vault_api'ye entegre edildi. Her <code>write_entry</code>, <code>soft_delete</code>, <code>merge_to_topic</code> işlemi Supabase'e fire-and-forget sync gidiyor. Telefon veya laptop gitse veriler kaybolmuyor. 225 mevcut entry migrate edildi.</div>
   </div>
   <div class="alert alert-success">
     <div class="alert-icon">✓</div>
@@ -613,6 +620,7 @@ const NODES = [
   { id:'db',       label:'theia.db',    sub:'SQLite · 11 tablo',        color:'#EF9F27', x:0.64, y:0.84 },
   { id:'summary',  label:'SUMMARIZER',  sub:'agents/summarizer.py',     color:'#1D9E75', x:0.36, y:0.90 },
   { id:'anthropic',label:'ANTHROPIC',   sub:'api.anthropic.com',        color:'#C77DFF', x:0.82, y:0.84 },
+  { id:'supabase', label:'SUPABASE',    sub:'bulut backup · entries',   color:'#1D9E75', x:0.64, y:0.96 },
 ];
 
 const EDGES = [
@@ -634,6 +642,7 @@ const EDGES = [
   { from:'summary',  to:'db',        label:'topics güncelle' },
   { from:'summary',  to:'claude',    label:'Haiku özetleme' },
   { from:'anthropic',to:'hud',       label:'Talk yanıtı', dashed:true },
+  { from:'db',       to:'supabase',  label:'fire-and-forget sync', dashed:true },
 ];
 
 function renderGraph() {

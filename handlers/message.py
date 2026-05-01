@@ -2,7 +2,6 @@
 
 import asyncio
 import logging
-import re
 from datetime import datetime
 
 import anthropic
@@ -12,6 +11,7 @@ from telegram.ext import ContextTypes
 from agents import memory_agent, web_agent
 from agents.web_agent import has_prefix
 from core.config import SYSTEM, SYSTEM_WEB, claude
+from core.shared import _MEM_SAVE_RE, _MEM_FORGET_RE, _MEM_VIEW_RE, _INTENT_RE
 from core.db import get_history, save_message
 from core.pending import add_pending
 from handlers.memory import _mem_view
@@ -19,20 +19,6 @@ from memory import vault_api
 
 log = logging.getLogger(__name__)
 
-_MEM_SAVE_RE   = re.compile(r"bunu hatırla|bunu kaydet|önemli:", re.IGNORECASE)
-_MEM_FORGET_RE = re.compile(r"bunu unut|bunu sil memory'den", re.IGNORECASE)
-_MEM_VIEW_RE   = re.compile(r"ne hatırlıyorsun", re.IGNORECASE)
-_INTENT_RE     = re.compile(
-    r"\b(bakacağım|bakarım|bakayım"
-    r"|yapacağım|yaparım|yapayım"
-    r"|deneyeceğim|denerim|deneyeyim"
-    r"|hallederim|halledeceğim"
-    r"|araştıracağım|araştırırım"
-    r"|düşüneceğim|düşüneyim"
-    r"|ekleyeceğim|eklerim"
-    r"|yazacağım|yazarım)\b",
-    re.IGNORECASE,
-)
 
 
 def _build_system(

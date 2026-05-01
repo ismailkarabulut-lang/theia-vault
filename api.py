@@ -1,22 +1,22 @@
 """THEIA FastAPI katmanı — Telegram olmadan HTTP üzerinden Claude erişimi."""
 import asyncio
 import logging
-import re
 import tempfile
 from datetime import datetime, timedelta
 
 import edge_tts
 import anthropic
-import uvicorn
 from fastapi import APIRouter, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+import uvicorn
 
 from agents import memory_agent, web_agent
 from agents.web_agent import has_prefix
 from core.config import SYSTEM, SYSTEM_WEB, USER_ID, claude
+from core.shared import _MEM_SAVE_RE, _MEM_FORGET_RE, _MEM_VIEW_RE
 from handlers.schedule import dt_str, parse_time
 from core.db import db, get_history, save_message
 from memory import vault_api
@@ -37,9 +37,6 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 api_router = APIRouter(prefix="/api")
 
-_MEM_SAVE_RE   = re.compile(r"bunu hatırla|bunu kaydet|önemli:", re.IGNORECASE)
-_MEM_FORGET_RE = re.compile(r"bunu unut|bunu sil memory'den", re.IGNORECASE)
-_MEM_VIEW_RE   = re.compile(r"ne hatırlıyorsun", re.IGNORECASE)
 
 VOICES = {
     "erkek": "tr-TR-AhmetNeural",
@@ -422,8 +419,147 @@ async def index():
     return FileResponse("static/index.html")
 
 
-app.include_router(api_router)
+@api_router.get("/health")
+async def health():
+    return {"status": "ok"}
 
+
+
+# ── GATEKEEPER ────────────────────────────────────────────────────────────────
+@api_router.get("/gatekeeper/log")
+async def gatekeeper_log(n: int = Query(50, ge=1, le=500)):
+    import json, os
+    log_path = os.path.expanduser("~/theia/gatekeeper_log.json")
+    try:
+        with open(log_path) as f:
+            data = json.load(f)
+        return {"events": data[-n:]}
+    except FileNotFoundError:
+        return {"events": []}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── RITUALS ───────────────────────────────────────────────────────────────────
+@api_router.get("/rituals")
+async def rituals(status: str = Query(None)):
+    try:
+        with db() as c:
+            if status:
+                rows = c.execute(
+                    "SELECT * FROM items WHERE type='ritual' AND status=? ORDER BY scheduled_time",
+                    (status,)
+                ).fetchall()
+            else:
+                rows = c.execute(
+                    "SELECT * FROM items WHERE type='ritual' ORDER BY scheduled_time"
+                ).fetchall()
+        return {"rituals": [dict(r) for r in rows]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
+
+
+
+# ── HUD ENDPOINT'LERİ ─────────────────────────────────────────────────────────
+import json as _json
+import os as _os
+from datetime import datetime as _dt
+
+@api_router.get("/status")
+async def status():
+    try:
+        with db() as c:
+            total_cmds = c.execute("SELECT COUNT(*) FROM audit").fetchone()[0]
+            mem_entries = c.execute("SELECT COUNT(*) FROM entries WHERE deleted=0").fetchone()[0]
+        return {
+            "uptime": "active",
+            "total_commands": total_cmds,
+            "memory_entries": mem_entries,
+            "memory_users": 1,
+            "superposition_state": "ACTIVE"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/gatekeeper")
+async def gatekeeper():
+    log_path = _os.path.expanduser("~/theia/gatekeeper_log.json")
+    try:
+        with open(log_path) as f:
+            events = _json.load(f)
+        dist = {"LOW": 0, "MEDIUM": 0, "HIGH": 0, "CRITICAL": 0}
+        for e in events:
+            r = e.get("risk", "LOW")
+            dist[r] = dist.get(r, 0) + 1
+        hourly = [{"hour": h, "count": sum(
+            1 for e in events
+            if _dt.fromisoformat(e["ts"]).hour == h
+        )} for h in range(24)]
+        recent = sorted(events, key=lambda x: x["ts"], reverse=True)[:8]
+        cmds = [{"ts": e["ts"], "cmd": e.get("cmd",""), "risk": e.get("risk","LOW"),
+                 "decision": e.get("decision","").upper()} for e in recent]
+        return {"risk_distribution": dist, "recent_commands": cmds, "hourly_activity": hourly}
+    except FileNotFoundError:
+        return {"risk_distribution": {"LOW":0,"MEDIUM":0,"HIGH":0,"CRITICAL":0},
+                "recent_commands": [], "hourly_activity": [{"hour":h,"count":0} for h in range(24)]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/memory")
+async def memory():
+    try:
+        with db() as c:
+            total = c.execute("SELECT COUNT(*) FROM entries WHERE deleted=0").fetchone()[0]
+        return {"total_users": 1, "total_entries": total, "users": []}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/activity")
+async def activity():
+    try:
+        with db() as c:
+            rows = c.execute(
+                """SELECT date(ts) as day, COUNT(*) as n
+                   FROM audit
+                   WHERE ts >= date('now','-7 days')
+                   GROUP BY day ORDER BY day"""
+            ).fetchall()
+        daily = []
+        for r in rows:
+            label = _dt.strptime(r["day"], "%Y-%m-%d").strftime("%a")
+            daily.append({"label": label, "total": r["n"], "LOW": 0, "MEDIUM": 0, "HIGH": 0, "CRITICAL": 0})
+        return {"daily": daily}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/stream")
+async def stream():
+    try:
+        with db() as c:
+            rows = c.execute(
+                """SELECT timestamp as ts, role, content FROM conversations
+                   WHERE user_id=? ORDER BY id DESC LIMIT 6""",
+                (KAPTAN_ID,)
+            ).fetchall()
+        items = [{
+            "ts": r["ts"][11:19] if r["ts"] else "",
+            "cmd": r["content"][:60],
+            "risk": "LOW",
+            "decision": "EXECUTED",
+            "color": "#00ff88"
+        } for r in rows]
+        return {"stream": items}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+app.include_router(api_router)
 
 if __name__ == "__main__":
     uvicorn.run("api:app", host="0.0.0.0", port=8000, reload=False)

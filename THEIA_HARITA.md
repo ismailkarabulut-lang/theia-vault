@@ -49,6 +49,8 @@ claude.messages.create()
 Telegram'a cevap gönder
     +
 vault_api.write_entry() → theia.db / entries tablosu (arka planda)
+    +
+supabase_sync.sync_entry() → Supabase bulut backup (fire-and-forget)
 ```
 
 ---
@@ -121,6 +123,7 @@ Not: `AuditLog` sınıfı JSONL yazmaya hazır ama mevcut dosya eski JSON array 
 ├── main.py                 ← bot giriş noktası
 ├── api.py                  ← FastAPI HTTP katmanı (port 8000) ✅ aktif
 ├── gatekeeper.py           ← risk sınıflandırma + sandbox + audit
+├── supabase_sync.py        ← Supabase bulut sync (fire-and-forget) ✅ yeni
 ├── theia_hud.html          ← eski HUD arayüzü (pasif)
 ├── voice.py                ← yerel sesli asistan — DONDURULDU, ileriki faz
 ├── requirements.txt
@@ -153,7 +156,7 @@ Not: `AuditLog` sınıfı JSONL yazmaya hazır ama mevcut dosya eski JSON array 
 │   └── web_agent.py        ← web arama (🌍 veya & prefix ile tetiklenir)
 │
 ├── memory/
-│   ├── vault_api.py        ← entries/topics CRUD (aktif sistem)
+│   ├── vault_api.py        ← entries/topics CRUD + Supabase sync hook ✅ güncellendi
 │   └── memory_manager.py   ← eski hafıza sistemi (pasif, silinmedi)
 │
 └── static/
@@ -162,8 +165,8 @@ Not: `AuditLog` sınıfı JSONL yazmaya hazır ama mevcut dosya eski JSON array 
     └── theia_hud_v2.html   ← orta versiyon (pasif)
 
 ~/theia/                    ← veri dizini (git dışı)
-├── theia.db                ← SQLite veritabanı
-├── .env                    ← gizli anahtarlar
+├── theia.db                ← SQLite veritabanı (225 entry + tüm tablolar)
+├── .env                    ← gizli anahtarlar (SUPABASE_URL + SUPABASE_ANON_KEY dahil)
 └── gatekeeper_log.json     ← audit log
 ```
 
@@ -284,11 +287,12 @@ Not: `AuditLog` sınıfı JSONL yazmaya hazır ama mevcut dosya eski JSON array 
 | 7 | Pasif dosyalar → _archive/ (theia_api.py, permissions.py, migration_script.py) | ✅ Tamamlandı |
 | 8 | core/shared.py — ortak regex tanımları | ✅ Tamamlandı |
 | 9 | api.py duplicate import temizliği | ✅ Tamamlandı |
-| 10 | api.py `_build_system` → message.py versiyonuyla eşitle | ⏳ Beklemede (B aşaması) |
-| 11 | Pigeon workspace UI | ⏳ Beklemede |
-| 12 | schedule.py bölünmesi (502 satır → crud + jobs) | ⏳ Büyüyünce |
-| 13 | Wolfstreet → Gmail bağlantısı | ⏳ En son, en karmaşık |
-| 14 | README güncelle | ⏳ Hepsi bittikten sonra |
+| 10 | Supabase bulut backup — supabase_sync.py | ✅ Tamamlandı |
+| 11 | api.py `_build_system` → message.py versiyonuyla eşitle | ⏳ Beklemede (B aşaması) |
+| 12 | Pigeon workspace UI | ⏳ Beklemede |
+| 13 | schedule.py bölünmesi (502 satır → crud + jobs) | ⏳ Büyüyünce |
+| 14 | Wolfstreet → Gmail bağlantısı | ⏳ En son, en karmaşık |
+| 15 | README güncelle | ⏳ Hepsi bittikten sonra |
 
 ---
 
@@ -328,6 +332,8 @@ tailscale up
 - **Tek kullanıcı** — `USER_ID` ile kimlik doğrulama
 - **Web araması** — mesajın başına 🌍 veya & koy
 - **Vault kayıt** — her konuşma otomatik kaydediliyor, `/kaydet` gerekmez
+- **Supabase bulut backup** — `supabase_sync.py` vault_api'ye entegre, her write/delete/merge otomatik sync. 225 entry migrate edildi. Telefon veya laptop gitse veriler kaybolmuyor.
+- **Supabase proje** — `theiafinal` (AWS ap-south-1), `entries` + `topics` tabloları, RLS kapalı
 - **Talk modülü** — API key localStorage'da, koda gömülmez, GitHub'a gitmez
 - **Talk kalıcılık** — konuşmalar localStorage'a yazılıyor (max 40 konuşma / 80 mesaj)
 - **CHAT modülü kaldırıldı** — Talk modülü her iki modu (direkt API + localhost) kapsıyor
@@ -338,4 +344,4 @@ tailscale up
 - **core/shared.py** — message.py ve api.py ortak regex tanımları buradan import eder
 - **api.py `_build_system`** — message.py versiyonundan farklı (user_memory, tarih eksik) — B aşaması bekliyor
 - **schedule.py** — 502 satır, izleniyor; büyüyünce crud + jobs olarak bölünecek
-- **.env konumu** — `~/theia/.env` (git dışı)
+- **.env konumu** — `~/theia/.env` (git dışı), SUPABASE_URL + SUPABASE_ANON_KEY burada

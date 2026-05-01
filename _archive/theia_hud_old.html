@@ -740,7 +740,7 @@ const MODS = [
   { id:'guard',  name:'GATEKEEPER', sub:'Risk classifier', col:'#E85D24', col2:'#ff8a5c', angle:180, icon:'G',          stats:'Threat: LOW' },
   { id:'vault',  name:'VAULT',      sub:'Memory store',    col:'#7C6EF5', col2:'#9b8fff', angle:225, icon:'V',          stats:'8.2TB / 12TB' },
   { id:'pigeon', name:'PIGEON',     sub:'Mobile approve',  col:'#4FA8D5', col2:'#7dd3fc', angle:270, icon:ICONS.pigeon, stats:'Bot: Online', svgIcon:true },
-  { id:'chat',   name:'CHAT',       sub:'Theia ile konuş', col:'#C77DFF', col2:'#e0aaff', angle:315, icon:ICONS.chat,   stats:'localhost:8585', svgIcon:true },
+  { id:'chat',   name:'CHAT',       sub:'Theia ile konuş', col:'#C77DFF', col2:'#e0aaff', angle:315, icon:ICONS.chat,   stats:'localhost:8000', svgIcon:true },
 ];
 
 let nodes = [], synapses = [], stars = [];
@@ -1632,7 +1632,7 @@ async function doSend(convList, activeCid, mode) {
       reply = data.content?.[0]?.text || JSON.stringify(data);
 
     } else {
-      const r = await fetch('http://localhost:8585/api/chat', {
+      const r = await fetch('http://localhost:8000/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1652,7 +1652,7 @@ async function doSend(convList, activeCid, mode) {
 
   } catch (err) {
     document.getElementById('talk-typing')?.remove();
-    const hint = mode === 'chat' ? ' — localhost:8585 çalışıyor mu?' : '';
+    const hint = mode === 'chat' ? ' — localhost:8000 çalışıyor mu?' : '';
     conv.messages.push({ role: 'theia', text: '⚠ ' + err.message + hint });
     renderConvMessages(convList, activeCid);
   }

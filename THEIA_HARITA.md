@@ -138,16 +138,20 @@ Not: `AuditLog` sınıfı JSONL yazmaya hazır ama mevcut dosya eski JSON array 
 │   └── migration_script.py ← DB stabil olduktan sonra arşivlendi
 │
 ├── core/
-│   ├── config.py           ← ayarlar, claude istemci, SYSTEM prompt
+│   ├── theia_soul.py       ← Theia kişiliği + build_system() ✅ yeni
+│   ├── config.py           ← ayarlar, claude istemci (SYSTEM kaldırıldı)
 │   ├── db.py               ← SQLite bağlantısı, tüm tablo şemaları
 │   ├── pending.py          ← niyet takip tablosu
-│   └── shared.py           ← ortak regex tanımları (_MEM_SAVE_RE vb.) ✅ yeni
+│   └── shared.py           ← ortak regex tanımları (_MEM_SAVE_RE vb.)
 │
 ├── handlers/
 │   ├── message.py          ← genel mesaj işleyici (ana akış burada)
 │   ├── shell.py            ← /cmd komutu + Gatekeeper entegrasyonu
 │   ├── memory.py           ← /memory /hafiza /kaydet /unut komutları
-│   ├── schedule.py         ← /liste /ekle /tamam görev yönetimi (502 satır — izleniyor)
+│   ├── schedule.py         ← giriş noktası (16 satır) ✅ bölündü
+│   ├── schedule_crud.py    ← sabitler, yardımcı fonksiyonlar (124 satır)
+│   ├── schedule_jobs.py    ← cron job'lar, minute_job (99 satır)
+│   ├── schedule_router.py  ← Telegram handler'ları /ekle /liste /tamam (286 satır)
 │   └── start.py            ← /start komutu
 │
 ├── agents/
@@ -290,7 +294,7 @@ Not: `AuditLog` sınıfı JSONL yazmaya hazır ama mevcut dosya eski JSON array 
 | 10 | Supabase bulut backup — supabase_sync.py | ✅ Tamamlandı |
 | 11 | api.py `_build_system` → message.py versiyonuyla eşitle | ✅ Tamamlandı (core/theia_soul.py) |
 | 12 | Pigeon workspace UI | ⏳ Beklemede |
-| 13 | schedule.py bölünmesi (502 satır → crud + jobs) | ⏳ Büyüyünce |
+| 13 | schedule.py bölünmesi (502 satır → crud + jobs + router) | ✅ Tamamlandı |
 | 14 | Wolfstreet → Gmail bağlantısı | ⏳ En son, en karmaşık |
 | 15 | README güncelle | ⏳ Hepsi bittikten sonra |
 

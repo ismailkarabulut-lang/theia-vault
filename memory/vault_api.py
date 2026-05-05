@@ -7,6 +7,7 @@ import uuid
 from datetime import datetime, timezone
 
 from core.db import db
+from supabase_sync import sync_entry, sync_soft_delete, sync_topic  # ← eklendi
 
 log = logging.getLogger("vault")
 
@@ -66,7 +67,9 @@ def _sync_write_entry(entry: dict, actor: str) -> dict:
             VALUES ('summarize', ?, 'pending', 0, ?, ?)
         """, (json.dumps({"entry_id": entry_id}), now, now))
 
-    return {**row, "meta": entry.get("meta", {})}
+    result = {**row, "meta": entry.get("meta", {})}
+    sync_entry(result)  # ← Supabase'e fire-and-forget
+    return result
 
 
 def _sync_get_entry(entry_id: str) -> dict | None:
@@ -89,17 +92,15 @@ def _sync_soft_delete(entry_id: str, actor: str) -> bool:
                 INSERT INTO audit (action, target_id, actor, status, ts)
                 VALUES ('soft_delete', ?, ?, 'ok', ?)
             """, (entry_id, actor, now))
+
+    if affected:
+        sync_soft_delete(entry_id, now)  # ← Supabase'e fire-and-forget
     return bool(affected)
 
 
 def _fts5_query(query: str) -> str | None:
-    """
-    Kullanıcı metnini FTS5-safe sorguya dönüştürür.
-    Her kelimeyi tırnakla sarar: "kelime1" "kelime2"
-    Noktalama, ?, !, vb. FTS5 operatörlerini dışarıda bırakır.
-    """
     import re
-    words = re.findall(r"\w+", query)  # Unicode \w — Türkçe harfler dahil
+    words = re.findall(r"\w+", query)
     if not words:
         return None
     return " ".join(f'"{w}"' for w in words)
@@ -126,7 +127,6 @@ def _sync_merge_to_topic(
     slug: str, entry_ids: list[str], summary: str, actor: str
 ) -> None:
     now = _now()
-    # title: slug boşluk yoksa direkt kullan, yoksa slug'dan türet
     title = slug.replace("_", " ").replace("-", " ").title()
 
     with db() as c:
@@ -155,31 +155,36 @@ def _sync_merge_to_topic(
             VALUES ('merge_to_topic', ?, ?, 'ok', ?, ?)
         """, (slug, actor, f"entries={len(entry_ids)}", now))
 
+        # topic'in güncel versiyonunu al
+        row = c.execute("SELECT * FROM topics WHERE slug=?", (slug,)).fetchone()
+
+    if row:
+        sync_topic(  # ← Supabase'e fire-and-forget
+            slug=row["slug"], title=row["title"], summary=row["summary"],
+            entry_count=row["entry_count"], version=row["version"],
+            created_at=row["created_at"], updated_at=row["updated_at"],
+        )
+
 
 # ── Public async API ──────────────────────────────────────────────────────────
 
 async def write_entry(entry: dict, actor: str) -> dict:
-    """Yeni entry yazar. Aynı transaction'da audit + summarize queue kaydı oluşturur."""
     return await asyncio.to_thread(_sync_write_entry, entry, actor)
 
 
 async def get_entry(entry_id: str, actor: str) -> dict | None:
-    """ID ile tek entry getirir. Silinmişleri döndürmez."""
     return await asyncio.to_thread(_sync_get_entry, entry_id)
 
 
 async def soft_delete(entry_id: str, actor: str) -> bool:
-    """Entry'yi siler (fiziksel silme yok). Başarıysa True döner."""
     return await asyncio.to_thread(_sync_soft_delete, entry_id, actor)
 
 
 async def search_entries(query: str, actor: str, limit: int = 10) -> list[dict]:
-    """FTS5 ile content + summary içinde arama yapar."""
     return await asyncio.to_thread(_sync_search_entries, query, limit)
 
 
 async def merge_to_topic(
     slug: str, entry_ids: list[str], summary: str, actor: str
 ) -> None:
-    """entry_ids'i slug topic'ine bağlar. Topic yoksa oluşturur, varsa günceller."""
     await asyncio.to_thread(_sync_merge_to_topic, slug, entry_ids, summary, actor)

@@ -2,7 +2,6 @@
 
 import asyncio
 import logging
-from datetime import datetime
 
 import anthropic
 from telegram import Update
@@ -10,7 +9,8 @@ from telegram.ext import ContextTypes
 
 from agents import memory_agent, web_agent
 from agents.web_agent import has_prefix
-from core.config import SYSTEM, SYSTEM_WEB, claude
+from core.config import claude
+from core.theia_soul import build_system
 from core.shared import _MEM_SAVE_RE, _MEM_FORGET_RE, _MEM_VIEW_RE, _INTENT_RE
 from core.db import get_history, save_message
 from core.pending import add_pending
@@ -20,25 +20,6 @@ from memory import vault_api
 log = logging.getLogger(__name__)
 
 
-
-def _build_system(
-    user_memory: str,
-    web: bool,
-    vault_context: str = "",
-    web_context: str = "",
-) -> str:
-    now  = datetime.now().strftime("%Y-%m-%d %H:%M")
-    base = (SYSTEM_WEB if web else SYSTEM) + f"\n\nŞu anki tarih ve saat: {now} (UTC+3)"
-    if user_memory:
-        base += (
-            f"\n\nBu kullanıcı hakkında bildiğin bilgiler:\n{user_memory}\n\n"
-            "Bu bilgileri doğal olarak kullan, her seferinde 'biliyorum ki...' deme."
-        )
-    if vault_context:
-        base += f"\n\n{vault_context}"
-    if web_context:
-        base += f"\n\n{web_context}"
-    return base
 
 
 async def _empty() -> str:
@@ -98,8 +79,7 @@ async def handle_message(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> Non
     )
 
     # 3. Sistem prompt'a enjekte et
-    system = _build_system(
-        "",
+    system = build_system(
         web=web_requested and bool(web_ctx),
         vault_context=mem_ctx,
         web_context=web_ctx,

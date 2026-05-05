@@ -7,7 +7,8 @@
       "Bash(python3 -c ' *)",
       "Bash(python3 *)",
       "Bash(git *)",
-      "Bash(timedatectl)"
+      "Bash(timedatectl)",
+      "Bash(firefox *)"
     ]
   }
 }

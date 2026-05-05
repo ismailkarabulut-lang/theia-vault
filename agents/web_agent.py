@@ -5,12 +5,12 @@ import logging
 
 import anthropic
 
-from core.config import WEB_TOOLS, claude
+from core.config import claude
 
 log = logging.getLogger("web_agent")
 
-# handlers/message.py bu sabiti import eder
 WEB_PREFIXES: frozenset[str] = frozenset({"🌍", "&"})
+WEB_TOOLS = [{"type": "web_search_20250305", "name": "web_search"}]
 
 _MODEL      = "claude-sonnet-4-6"
 _MAX_TOKENS = 1024

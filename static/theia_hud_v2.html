@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1600">
+<title>THEIA CORE SYSTEM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #0a0e17;
+  --bg2:      #041525;
+  --grid:     #0a2540;
+  --cyan:     #00d4ff;
+  --cyan2:    #00ffee;
+  --blue:     #0066ff;
+  --accent:   #ff6b35;
+  --glow:     #00d4ff88;
+  --low:      #00ff88;
+  --medium:   #00d4ff;
+  --high:     #ffaa00;
+  --critical: #ff3355;
+  --text:     #c8e8ff;
+  --dim:      #3a6080;
+  --panel:    rgba(10,20,40,0.88);
+  --border:   rgba(0,212,255,0.2);
+  --font-hud: 'Share Tech Mono', monospace;
+  --font-title:'Orbitron', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; height: 100%; background: var(--bg); color: var(--text); font-family: var(--font-hud); overflow: hidden; }
+
+/* ── Animated grid bg ── */
+.grid-bg {
+  position: fixed; inset: 0; z-index: 0;
+  background-image: linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 50px 50px;
+  animation: gridMove 20s linear infinite;
+  pointer-events: none; opacity: 0.4;
+}
+@keyframes gridMove {
+  0%   { transform: perspective(600px) rotateX(55deg) translateY(0); }
+  100% { transform: perspective(600px) rotateX(55deg) translateY(50px); }
+}
+
+/* ── Scanline ── */
+.scan-line {
+  position: fixed; top: -4px; left: 0; width: 100%; height: 4px;
+  background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+  opacity: 0.5; animation: scan 5s linear infinite; pointer-events: none; z-index: 9999;
+}
+@keyframes scan { 0%{top:-4px} 100%{top:100vh} }
+
+/* ── Scanline overlay ── */
+body::after {
+  content: ''; position: fixed; inset: 0; z-index: 9998;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.05) 2px, rgba(0,0,0,0.05) 4px);
+  pointer-events: none;
+}
+
+/* ── Layout ── */
+#root {
+  position: relative; z-index: 1;
+  display: grid;
+  width: 100vw; height: 100vh;
+  grid-template-columns: 280px 1fr 280px;
+  grid-template-rows: 60px 1fr 80px;
+  gap: 3px; padding: 6px;
+}
+
+/* ── Panel base ── */
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(8px);
+  position: relative; overflow: hidden;
+}
+.panel::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+}
+.panel::after {
+  content: ''; position: absolute; top: -1px; right: -1px;
+  width: 12px; height: 12px;
+  border-top: 2px solid var(--cyan); border-right: 2px solid var(--cyan);
+  opacity: 0.6;
+}
+.panel-header {
+  padding: 8px 12px; font-family: var(--font-title);
+  font-size: 9px; letter-spacing: 3px; color: var(--cyan); opacity: 0.8;
+  border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.panel-header::before { content: '// '; opacity: 0.4; }
+
+/* ── TOP BAR ── */
+#header {
+  grid-column: 1 / -1;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 20px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  position: relative; overflow: hidden;
+}
+#header::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, var(--glow) 50%, transparent);
+  opacity: 0.06; animation: sweep 4s linear infinite;
+}
+@keyframes sweep { from{transform:translateX(-100%)} to{transform:translateX(100%)} }
+
+.header-left, .header-right { display: flex; align-items: center; gap: 16px; font-size: 11px; color: var(--dim); }
+.header-center {
+  font-family: var(--font-title); font-size: 18px; font-weight: 900; letter-spacing: 6px;
+  color: var(--cyan); text-shadow: 0 0 20px var(--cyan), 0 0 40px var(--glow);
+  animation: titlePulse 3s ease-in-out infinite;
+}
+@keyframes titlePulse {
+  0%,100% { text-shadow: 0 0 20px var(--cyan), 0 0 40px var(--glow); }
+  50%      { text-shadow: 0 0 30px var(--cyan2), 0 0 60px var(--cyan); }
+}
+.status-pill { display: flex; align-items: center; gap: 6px; padding: 3px 10px; border: 1px solid var(--low); color: var(--low); font-size: 10px; }
+.status-dot  { width: 7px; height: 7px; border-radius: 50%; background: var(--low); animation: blink 1.2s ease-in-out infinite; box-shadow: 0 0 8px var(--low); }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+#clock { font-size: 13px; color: var(--cyan); letter-spacing: 2px; }
+
+/* ── LEFT: Agent panel ── */
+#col-left {
+  grid-column: 1; grid-row: 2;
+  display: flex; flex-direction: column;
+}
+.agent-list { padding: 10px; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; flex: 1; }
+.agent-card {
+  background: rgba(0,20,40,0.6); border: 1px solid rgba(0,212,255,0.15);
+  padding: 10px 12px; border-radius: 2px; transition: all 0.3s; cursor: pointer;
+}
+.agent-card:hover  { border-color: var(--cyan); background: rgba(0,212,255,0.05); }
+.agent-card.active { border-color: var(--accent); box-shadow: 0 0 15px rgba(255,107,53,0.2); }
+.agent-name { font-size: 11px; font-weight: bold; margin-bottom: 3px; display: flex; justify-content: space-between; align-items: center; }
+.agent-desc { font-size: 9px; opacity: 0.55; line-height: 1.4; }
+.agent-progress { margin-top: 7px; height: 2px; background: rgba(0,212,255,0.08); border-radius: 1px; overflow: hidden; }
+.agent-bar { height: 100%; background: var(--cyan); width: 0%; transition: width 0.4s; box-shadow: 0 0 8px var(--cyan); }
+.agent-badge { font-size: 8px; padding: 1px 5px; border: 1px solid; border-radius: 1px; }
+.badge-ok   { color: var(--low);    border-color: var(--low); }
+.badge-warn { color: var(--high);   border-color: var(--high); }
+.badge-err  { color: var(--critical); border-color: var(--critical); }
+
+/* Risk summary below agents */
+.risk-summary { padding: 10px; border-top: 1px solid var(--border); flex-shrink: 0; }
+.risk-row { display: flex; align-items: center; gap: 6px; font-size: 9px; margin-bottom: 5px; }
+.risk-label { width: 58px; }
+.risk-track { flex: 1; height: 3px; background: var(--grid); }
+.risk-fill  { height: 100%; transition: width 1s ease; }
+.risk-val   { width: 24px; text-align: right; }
+
+/* ── CENTER ── */
+#col-center {
+  grid-column: 2; grid-row: 2;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  position: relative;
+}
+
+/* Radar orb */
+.radar-container { position: relative; width: 280px; height: 280px; flex-shrink: 0; }
+.radar {
+  width: 100%; height: 100%; border-radius: 50%;
+  border: 1px solid rgba(0,212,255,0.25);
+  position: relative; animation: radarSpin 12s linear infinite;
+}
+@keyframes radarSpin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+.radar::before {
+  content: ''; position: absolute; top:10%; left:10%; right:10%; bottom:10%;
+  border-radius: 50%; border: 1px solid rgba(0,212,255,0.15);
+}
+.radar::after {
+  content: ''; position: absolute; top:25%; left:25%; right:25%; bottom:25%;
+  border-radius: 50%; border: 1px solid rgba(0,212,255,0.1);
+  background: radial-gradient(circle, rgba(0,212,255,0.08) 0%, transparent 70%);
+}
+.radar-sweep {
+  position: absolute; top:50%; left:50%; width:50%; height:2px;
+  background: linear-gradient(90deg, var(--cyan), transparent);
+  transform-origin: left center; animation: sweepRadar 4s linear infinite;
+}
+@keyframes sweepRadar { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+
+/* Orb rings */
+.orb-ring {
+  position: absolute; border-radius: 50%; border: 1px solid var(--cyan);
+  top: 50%; left: 50%; transform: translate(-50%,-50%);
+  animation: orbRotate linear infinite;
+}
+.orb-ring:nth-child(2){width:230px;height:230px;border-color:var(--cyan);opacity:0.15;animation-duration:18s}
+.orb-ring:nth-child(3){width:190px;height:190px;border-color:var(--cyan2);opacity:0.2;animation-duration:12s;animation-direction:reverse;border-style:dashed}
+@keyframes orbRotate{from{transform:translate(-50%,-50%) rotate(0deg)}to{transform:translate(-50%,-50%) rotate(360deg)}}
+
+.orb-core {
+  position: absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  width:60px; height:60px; border-radius:50%;
+  background: radial-gradient(circle, #fff 0%, var(--cyan2) 20%, var(--cyan) 55%, var(--blue) 85%, transparent 100%);
+  box-shadow: 0 0 20px var(--cyan2), 0 0 50px var(--cyan), 0 0 90px var(--glow);
+  animation: corePulse 2.5s ease-in-out infinite; z-index:2;
+}
+@keyframes corePulse {
+  0%,100%{transform:translate(-50%,-50%) scale(1)}
+  50%{transform:translate(-50%,-50%) scale(1.1)}
+}
+
+.core-text {
+  position: absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  text-align: center; z-index:10; margin-top:50px;
+}
+.core-title { font-family:var(--font-title); font-size:11px; letter-spacing:2px; opacity:0.7; margin-bottom:4px; }
+.core-status { font-size:10px; color:var(--accent); animation:flicker 3s infinite; }
+@keyframes flicker{0%,90%,100%{opacity:1}95%{opacity:0.3}}
+
+/* Waveform */
+.waveform {
+  position: absolute; bottom:20px; left:50%; transform:translateX(-50%);
+  display:flex; align-items:center; gap:3px; height:50px;
+}
+.wave-bar { width:3px; background:var(--cyan); border-radius:2px; animation:waveAnim 1s ease-in-out infinite; opacity:0.55; }
+.wave-bar:nth-child(odd){animation-duration:0.8s}
+.wave-bar:nth-child(2n){animation-duration:1.2s}
+.wave-bar:nth-child(3n){animation-duration:0.6s}
+@keyframes waveAnim{0%,100%{height:8px}50%{height:40px}}
+.waveform.listening .wave-bar{background:var(--accent);animation-duration:0.25s!important}
+
+/* Core stats */
+.core-stats { display:flex; gap:24px; margin-top:16px; }
+.core-stat  { text-align:center; }
+.core-stat-val { font-family:var(--font-title); font-size:20px; font-weight:700; color:var(--cyan); text-shadow:0 0 10px var(--glow); }
+.core-stat-lbl { font-size:8px; color:var(--dim); letter-spacing:2px; }
+
+/* Command stream */
+#panel-stream {
+  position: absolute; bottom:0; left:0; right:0; height:130px;
+  background: var(--panel); border-top: 1px solid var(--border);
+  display:flex; flex-direction:column;
+}
+.stream-list { flex:1; overflow:hidden; display:flex; flex-direction:column; gap:2px; padding:6px 10px; }
+.stream-item { display:flex; gap:8px; align-items:center; font-size:9px; padding:2px 4px; border-left:2px solid var(--dim); min-height:18px; }
+.s-ts  { color:var(--dim); width:58px; flex-shrink:0; }
+.s-risk{ width:58px; flex-shrink:0; font-weight:bold; font-size:8px; }
+.s-cmd { color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; }
+.s-dec { color:var(--dim); width:58px; text-align:right; flex-shrink:0; font-size:8px; }
+
+/* ── RIGHT: Memory + Lang ── */
+#col-right {
+  grid-column:3; grid-row:2;
+  display:flex; flex-direction:column; gap:3px;
+}
+
+/* Agentic quick status */
+.agent-grid { display:grid; grid-template-columns:1fr 1fr; gap:5px; padding:8px; }
+.agent-cell { border:1px solid var(--border); padding:5px 8px; display:flex; flex-direction:column; gap:2px; }
+.agent-cell-lbl { font-size:8px; color:var(--dim); letter-spacing:1px; }
+.agent-cell-val { font-size:12px; color:var(--cyan); font-weight:bold; }
+
+/* Memory node graph */
+.memory-nodes { flex:1; position:relative; overflow:hidden; min-height:80px; }
+canvas#memory-canvas { position:absolute; inset:0; width:100%; height:100%; }
+
+/* Language processing */
+canvas#lang-canvas { width:100%; height:60px; display:block; }
+
+/* Hourly bars */
+.bar-chart { display:flex; align-items:flex-end; gap:2px; height:55px; padding:0 8px; }
+.bar-wrap  { flex:1; display:flex; flex-direction:column; align-items:center; gap:1px; }
+.bar       { width:100%; background:var(--cyan); opacity:0.4; transition:height 0.8s ease; min-height:2px; }
+.bar-lbl   { font-size:6px; color:var(--dim); }
+
+/* ── BOTTOM CHAT BAR ── */
+#chat-bar {
+  grid-column: 1 / -1;
+  display:flex; align-items:center; gap:8px; padding:0 16px;
+  background:var(--panel); border:1px solid var(--border);
+  position:relative; overflow:hidden;
+}
+#chat-bar::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:2px;
+  background:linear-gradient(90deg, transparent, var(--cyan), transparent);
+}
+#chat-prefix { font-size:11px; color:var(--dim); white-space:nowrap; }
+#chat-input {
+  flex:1; background:rgba(0,10,20,0.8); border:1px solid rgba(0,212,255,0.2);
+  color:var(--text); font-family:var(--font-hud); font-size:12px;
+  padding:10px 14px; outline:none; transition:all 0.3s;
+}
+#chat-input:focus { border-color:var(--cyan); box-shadow:0 0 15px rgba(0,212,255,0.1); }
+#chat-input::placeholder { color:rgba(0,212,255,0.3); }
+
+.btn {
+  background:rgba(0,212,255,0.08); border:1px solid rgba(0,212,255,0.3);
+  color:var(--cyan); padding:8px 16px; font-family:var(--font-hud); font-size:10px;
+  cursor:pointer; text-transform:uppercase; letter-spacing:1px; transition:all 0.3s;
+  white-space:nowrap; position:relative; overflow:hidden;
+}
+.btn:hover { background:rgba(0,212,255,0.18); box-shadow:0 0 15px rgba(0,212,255,0.15); }
+.btn::before { content:''; position:absolute; top:0; left:-100%; width:100%; height:100%; background:linear-gradient(90deg,transparent,rgba(0,212,255,0.15),transparent); transition:left 0.4s; }
+.btn:hover::before { left:100%; }
+.btn:disabled { opacity:0.3; cursor:not-allowed; }
+
+#btn-voice {
+  width:46px; height:46px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  padding:0; font-size:18px;
+}
+#btn-voice.listening { background:rgba(255,107,53,0.2); border-color:var(--accent); animation:voicePulse 1s infinite; }
+@keyframes voicePulse{0%,100%{box-shadow:0 0 0 0 rgba(255,107,53,0.4)}50%{box-shadow:0 0 0 12px rgba(255,107,53,0)}}
+
+/* ── Chat history overlay ── */
+#chat-overlay {
+  position:fixed; top:66px; left:6px; right:6px; bottom:86px;
+  background:rgba(10,14,23,0.96); z-index:50;
+  display:none; flex-direction:column; padding:16px; overflow-y:auto;
+  border:1px solid var(--border);
+}
+#chat-overlay.active { display:flex; }
+.chat-msg { max-width:82%; padding:10px 14px; margin-bottom:8px; font-size:11px; line-height:1.5; animation:msgIn 0.25s ease; word-break:break-word; white-space:pre-wrap; }
+@keyframes msgIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.chat-msg.user      { align-self:flex-end;  background:rgba(0,212,255,0.08); border:1px solid rgba(0,212,255,0.2); }
+.chat-msg.assistant { align-self:flex-start; background:rgba(255,107,53,0.05); border:1px solid rgba(255,107,53,0.18); }
+.chat-msg .msg-who  { font-size:8px; color:var(--cyan); opacity:0.7; margin-bottom:3px; letter-spacing:2px; }
+.chat-msg .msg-ts   { font-size:8px; opacity:0.4; margin-top:3px; }
+.chat-msg.thinking  { opacity:0.5; font-style:italic; }
+
+/* Alerts */
+#alert-overlay { position:fixed; top:70px; right:10px; display:flex; flex-direction:column; gap:4px; z-index:1000; }
+.alert-item { padding:7px 12px; border:1px solid var(--high); background:rgba(255,170,0,0.07); font-size:9px; color:var(--high); animation:alertIn 0.3s ease; cursor:pointer; }
+.alert-item.critical { border-color:var(--critical); color:var(--critical); background:rgba(255,51,85,0.07); }
+@keyframes alertIn{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}
+
+/* Footer ticker */
+#footer { position:fixed; bottom:0; left:0; right:0; height:18px; background:rgba(4,21,37,0.9); border-top:1px solid var(--border); display:flex; align-items:center; padding:0 10px; z-index:200; }
+.ticker { flex:1; overflow:hidden; }
+.ticker-text { white-space:nowrap; font-size:8px; color:var(--dim); animation:tickerAnim 35s linear infinite; letter-spacing:1px; }
+@keyframes tickerAnim{from{transform:translateX(100%)}to{transform:translateX(-100%)}}
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+<div class="scan-line"></div>
+
+<div id="root">
+
+  <!-- HEADER -->
+  <div id="header" class="panel" style="border:1px solid var(--border)">
+    <div class="header-left">
+      <div class="status-pill"><div class="status-dot"></div>ONLINE</div>
+      <span id="uptime" style="font-size:10px">UPTIME: --:--:--</span>
+      <span style="font-size:10px">NODE: THEIA-CORE</span>
+    </div>
+    <div class="header-center">◈ THEIA CORE SYSTEM ◈</div>
+    <div class="header-right">
+      <span style="font-size:10px">CPU: <span id="hdr-cpu">--</span></span>
+      <span style="font-size:10px">MEM: <span id="hdr-mem">--</span></span>
+      <span style="font-size:10px">SUPERPOSITION: <span style="color:var(--cyan2)">ACTIVE</span></span>
+      <div id="clock">--:--:--</div>
+    </div>
+  </div>
+
+  <!-- LEFT: Agents -->
+  <div id="col-left" class="panel">
+    <div class="panel-header">AJAN DURUMLARI<div class="status-dot"></div></div>
+    <div class="agent-list">
+      <div class="agent-card" id="agent-gatekeeper">
+        <div class="agent-name">🛡 GATEKEEPER <span class="agent-badge badge-ok">AKTİF</span></div>
+        <div class="agent-desc">Risk sınıflandırma · Komut denetimi · Onay akışı</div>
+        <div class="agent-progress"><div class="agent-bar" id="bar-gatekeeper"></div></div>
+      </div>
+      <div class="agent-card" id="agent-memory">
+        <div class="agent-name">🧠 HAFIZA <span class="agent-badge badge-ok" id="badge-memory">--</span></div>
+        <div class="agent-desc">Kullanıcı hafızası · Bağlamsal eşleştirme · Vault</div>
+        <div class="agent-progress"><div class="agent-bar" id="bar-memory"></div></div>
+      </div>
+      <div class="agent-card" id="agent-bot">
+        <div class="agent-name">🤖 TELEGRAM BOT <span class="agent-badge badge-ok">ONLINE</span></div>
+        <div class="agent-desc">Mesaj işleme · Komut yönlendirme · Kullanıcı arayüzü</div>
+        <div class="agent-progress"><div class="agent-bar" id="bar-bot"></div></div>
+      </div>
+      <div class="agent-card" id="agent-voice">
+        <div class="agent-name">🎙 SES TANIMA <span class="agent-badge badge-warn">HAZIR</span></div>
+        <div class="agent-desc">Web Speech API · Türkçe dil desteği · Mikrofon</div>
+        <div class="agent-progress"><div class="agent-bar" id="bar-voice"></div></div>
+      </div>
+      <div class="agent-card" id="agent-screen">
+        <div class="agent-name">📸 EKRAN ANALİZİ <span class="agent-badge badge-ok">HAZIR</span></div>
+        <div class="agent-desc">scrot · Vision API · Hata tanıma</div>
+        <div class="agent-progress"><div class="agent-bar" id="bar-screen"></div></div>
+      </div>
+    </div>
+    <!-- Risk summary -->
+    <div class="risk-summary">
+      <div class="risk-row"><span class="risk-label" style="color:var(--low)">LOW</span><div class="risk-track"><div class="risk-fill" id="rf-low" style="background:var(--low)"></div></div><span class="risk-val" id="rv-low">0</span></div>
+      <div class="risk-row"><span class="risk-label" style="color:var(--medium)">MEDIUM</span><div class="risk-track"><div class="risk-fill" id="rf-med" style="background:var(--medium)"></div></div><span class="risk-val" id="rv-med">0</span></div>
+      <div class="risk-row"><span class="risk-label" style="color:var(--high)">HIGH</span><div class="risk-track"><div class="risk-fill" id="rf-high" style="background:var(--high)"></div></div><span class="risk-val" id="rv-high">0</span></div>
+      <div class="risk-row"><span class="risk-label" style="color:var(--critical)">CRITICAL</span><div class="risk-track"><div class="risk-fill" id="rf-crit" style="background:var(--critical)"></div></div><span class="risk-val" id="rv-crit">0</span></div>
+    </div>
+  </div>
+
+  <!-- CENTER: Radar + Stream -->
+  <div id="col-center" class="panel">
+    <!-- Radar orb -->
+    <div class="radar-container">
+      <div class="radar">
+        <div class="radar-sweep"></div>
+        <div class="orb-ring"></div>
+        <div class="orb-ring"></div>
+        <div class="orb-core"></div>
+      </div>
+      <div class="core-text">
+        <div class="core-title">ACTIVE ANALYSIS: ON</div>
+        <div class="core-status" id="core-status">Sistem Hazır</div>
+      </div>
+      <div class="waveform" id="waveform"></div>
+    </div>
+
+    <!-- Core stats -->
+    <div class="core-stats">
+      <div class="core-stat"><div class="core-stat-val" id="stat-total">0</div><div class="core-stat-lbl">TOTAL OPS</div></div>
+      <div class="core-stat"><div class="core-stat-val" id="stat-mem">0</div><div class="core-stat-lbl">MEM ENTRIES</div></div>
+      <div class="core-stat"><div class="core-stat-val" id="stat-users">0</div><div class="core-stat-lbl">USERS</div></div>
+    </div>
+
+    <!-- Command stream -->
+    <div id="panel-stream">
+      <div class="panel-header" style="padding:4px 10px">COMMAND STREAM [LIVE]</div>
+      <div class="stream-list" id="stream-list">
+        <div style="color:var(--dim);font-size:9px;text-align:center;padding:8px">BAĞLANIYOR...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Agentic + Memory + Lang + Hourly -->
+  <div id="col-right" class="panel" style="display:flex;flex-direction:column;gap:0">
+
+    <div class="panel-header">AGENTİC DURUM</div>
+    <div class="agent-grid">
+      <div class="agent-cell"><div class="agent-cell-lbl">CPU</div><div class="agent-cell-val" id="ag-cpu">--</div></div>
+      <div class="agent-cell"><div class="agent-cell-lbl">GATEKEEPER</div><div class="agent-cell-val" style="color:var(--low)">AKTİF</div></div>
+      <div class="agent-cell"><div class="agent-cell-lbl">SON RİSK</div><div class="agent-cell-val" id="ag-risk">--</div></div>
+      <div class="agent-cell"><div class="agent-cell-lbl">KARAR</div><div class="agent-cell-val" id="ag-dec">--</div></div>
+    </div>
+    <div style="padding:4px 10px;font-size:8px;color:var(--dim);border-bottom:1px solid var(--border)" id="last-cmd">SON: --</div>
+
+    <div class="panel-header" style="margin-top:2px">HAFIZA NEXUSu</div>
+    <div style="flex:1;position:relative;min-height:80px">
+      <canvas id="memory-canvas" style="position:absolute;inset:0;width:100%;height:100%"></canvas>
+    </div>
+    <div style="padding:4px 10px;font-size:9px;display:flex;gap:12px;border-top:1px solid var(--border)">
+      <span>USERS: <span style="color:var(--cyan)" id="mem-users">0</span></span>
+      <span>ENTRIES: <span style="color:var(--cyan)" id="mem-entries">0</span></span>
+    </div>
+
+    <div class="panel-header">DİL İŞLEME</div>
+    <canvas id="lang-canvas" height="60"></canvas>
+
+    <div class="panel-header">SAATLİK AKTİVİTE</div>
+    <div class="bar-chart" id="hourly-bars"></div>
+    <div style="height:6px"></div>
+  </div>
+
+  <!-- BOTTOM CHAT BAR -->
+  <div id="chat-bar">
+    <span id="chat-prefix" style="color:var(--accent);font-size:11px">[THEIA]›</span>
+    <input id="chat-input" type="text" placeholder="Komut veya soru gir... (Enter ile gönder, geçmiş için ▲ tıkla)" autocomplete="off">
+    <button class="btn" id="btn-history" onclick="toggleHistory()">▲ GEÇMİŞ</button>
+    <button class="btn" id="btn-screen" onclick="takeScreenshot()">📸 EKRAN</button>
+    <button class="btn" id="btn-send">GÖNDER</button>
+    <button class="btn" id="btn-voice" style="border-radius:50%;width:46px;height:46px;padding:0;font-size:18px">🎙</button>
+  </div>
+
+</div>
+
+<!-- Chat history overlay -->
+<div id="chat-overlay">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-family:var(--font-title);font-size:10px;letter-spacing:3px;color:var(--cyan)">
+    <span>// THEIA CHAT GEÇMİŞİ</span>
+    <span style="cursor:pointer;opacity:0.5" onclick="toggleHistory()">✕ KAPAT</span>
+  </div>
+  <div id="chat-messages" style="display:flex;flex-direction:column;gap:6px"></div>
+</div>
+
+<!-- Alerts -->
+<div id="alert-overlay"></div>
+
+<!-- Footer -->
+<div id="footer">
+  <div class="ticker"><span class="ticker-text" id="ticker-text">THEIA CORE SYSTEM BAŞLATILIYOR...</span></div>
+  <span style="font-size:8px;color:var(--dim);margin-left:12px" id="footer-ts">--</span>
+</div>
+
+<script>
+// ── Config ────────────────────────────────────────────────────────────────────
+const API_BASE = 'http://localhost:8000';
+const POLL_MS  = 3000;
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let state = { status:null, gatekeeper:null, memory:null, stream:null, mockMode:false };
+let chatHistory = [];
+let memNodes = [];
+let langData  = Array(60).fill(0);
+let seenCmds  = new Set();
+
+// ── Clock ─────────────────────────────────────────────────────────────────────
+function updateClock() {
+  const n = new Date(), p = x=>String(x).padStart(2,'0');
+  document.getElementById('clock').textContent = `${p(n.getHours())}:${p(n.getMinutes())}:${p(n.getSeconds())}`;
+  document.getElementById('footer-ts').textContent = n.toISOString().replace('T',' ').slice(0,19);
+  document.getElementById('hdr-cpu').textContent = Math.floor(Math.random()*28+4)+'%';
+  document.getElementById('hdr-mem').textContent = Math.floor(Math.random()*80+300)+'MB';
+  document.getElementById('ag-cpu').textContent  = Math.floor(Math.random()*28+4)+'%';
+}
+setInterval(updateClock,1000); updateClock();
+
+// ── Waveform bars ─────────────────────────────────────────────────────────────
+function createWaveform(){
+  const c=document.getElementById('waveform'); c.innerHTML='';
+  for(let i=0;i<36;i++){
+    const b=document.createElement('div'); b.className='wave-bar';
+    b.style.height=(Math.random()*25+6)+'px'; b.style.animationDelay=(i*0.055)+'s';
+    c.appendChild(b);
+  }
+}
+createWaveform();
+
+// ── API fetch ─────────────────────────────────────────────────────────────────
+async function fetchAll(){
+  try {
+    const [s,g,m,st] = await Promise.all([
+      fetch(`${API_BASE}/api/status`).then(r=>r.json()),
+      fetch(`${API_BASE}/api/gatekeeper`).then(r=>r.json()),
+      fetch(`${API_BASE}/api/memory`).then(r=>r.json()),
+      fetch(`${API_BASE}/api/stream`).then(r=>r.json()),
+    ]);
+    state = {...state, status:s, gatekeeper:g, memory:m, stream:st, mockMode:false};
+  } catch(e) {
+    if(!state.mockMode){ state.mockMode=true; injectMock(); }
+  }
+  render();
+}
+
+// ── Mock ──────────────────────────────────────────────────────────────────────
+function injectMock(){
+  const rng=(a,b)=>Math.floor(Math.random()*(b-a)+a);
+  const risks=['LOW','MEDIUM','HIGH','CRITICAL'];
+  const cmds=['ls -la','git status','python3 main.py','cat config.json','df -h','ping 8.8.8.8','sudo apt update'];
+  state.status={uptime:'00:05:00',total_commands:rng(20,120),memory_entries:rng(10,60),memory_users:rng(1,4)};
+  state.gatekeeper={
+    risk_distribution:{LOW:rng(10,60),MEDIUM:rng(5,25),HIGH:rng(1,10),CRITICAL:rng(0,3)},
+    recent_commands:Array.from({length:8},(_,i)=>({ts:new Date(Date.now()-i*90000).toISOString().slice(0,19),cmd:cmds[i%cmds.length],risk:risks[rng(0,4)],decision:['EXECUTED','PENDING','BLOCKED'][rng(0,3)]})),
+    hourly_activity:Array.from({length:24},(_,h)=>({hour:h,count:rng(0,12)})),
+  };
+  state.memory={total_users:rng(1,4),total_entries:rng(10,60)};
+  state.stream={stream:Array.from({length:6},(_,i)=>({ts:new Date(Date.now()-i*60000).toISOString().slice(11,19),cmd:cmds[i%cmds.length],risk:risks[rng(0,4)],decision:['EXECUTED','PENDING','BLOCKED'][rng(0,3)],color:['#00ff88','#00d4ff','#ffaa00','#ff3355'][rng(0,4)]}))};
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function render(){
+  renderStatus(); renderGatekeeper(); renderMemoryStats(); renderStream(); updateTicker(); checkAlerts();
+}
+
+function renderStatus(){
+  if(!state.status) return;
+  const s=state.status;
+  document.getElementById('uptime').textContent=`UPTIME: ${s.uptime||'--:--:--'}`;
+  document.getElementById('stat-total').textContent=s.total_commands||0;
+  document.getElementById('stat-mem').textContent=s.memory_entries||0;
+  document.getElementById('stat-users').textContent=s.memory_users||0;
+}
+
+function renderGatekeeper(){
+  if(!state.gatekeeper) return;
+  const g=state.gatekeeper, rd=g.risk_distribution;
+  const total=(rd.LOW||0)+(rd.MEDIUM||0)+(rd.HIGH||0)+(rd.CRITICAL||0)||1;
+  const setBar=(id,vid,val)=>{
+    const el=document.getElementById(id); if(el) el.style.width=((val/total)*100)+'%';
+    const ve=document.getElementById(vid); if(ve) ve.textContent=val;
+  };
+  setBar('rf-low','rv-low',rd.LOW||0);
+  setBar('rf-med','rv-med',rd.MEDIUM||0);
+  setBar('rf-high','rv-high',rd.HIGH||0);
+  setBar('rf-crit','rv-crit',rd.CRITICAL||0);
+  const last=g.recent_commands&&g.recent_commands[0];
+  if(last){
+    const rc={LOW:'var(--low)',MEDIUM:'var(--medium)',HIGH:'var(--high)',CRITICAL:'var(--critical)'};
+    const ar=document.getElementById('ag-risk');
+    if(ar){ar.textContent=last.risk;ar.style.color=rc[last.risk]||'var(--cyan)';}
+    const ad=document.getElementById('ag-dec'); if(ad) ad.textContent=last.decision||'--';
+    const lc=document.getElementById('last-cmd'); if(lc) lc.textContent='SON: '+(last.cmd||'').slice(0,45);
+    animateAgent('gatekeeper');
+  }
+  // Memory badge
+  const bm=document.getElementById('badge-memory');
+  if(bm) bm.textContent=(state.memory?.total_entries||0)+' kayıt';
+  // Hourly
+  const hc=document.getElementById('hourly-bars');
+  if(hc&&g.hourly_activity){
+    const max=Math.max(...g.hourly_activity.map(h=>h.count),1);
+    const now=new Date().getHours();
+    hc.innerHTML=g.hourly_activity.map(h=>{
+      const pct=(h.count/max*100).toFixed(0);
+      const active=h.hour===now;
+      return `<div class="bar-wrap"><div class="bar" style="height:${pct}%;background:${active?'var(--cyan2)':'var(--cyan)'};opacity:${active?0.9:0.35}"></div><div class="bar-lbl">${h.hour%6===0?String(h.hour).padStart(2,'0'):''}</div></div>`;
+    }).join('');
+  }
+}
+
+function renderMemoryStats(){
+  if(!state.memory) return;
+  const mu=document.getElementById('mem-users'); if(mu) mu.textContent=state.memory.total_users||0;
+  const me=document.getElementById('mem-entries'); if(me) me.textContent=state.memory.total_entries||0;
+}
+
+function renderStream(){
+  if(!state.stream) return;
+  const list=document.getElementById('stream-list'); if(!list) return;
+  const items=state.stream.stream||[]; if(!items.length) return;
+  const rc={LOW:'var(--low)',MEDIUM:'var(--medium)',HIGH:'var(--high)',CRITICAL:'var(--critical)'};
+  list.innerHTML=items.map(item=>`
+    <div class="stream-item" style="border-left-color:${rc[item.risk]||'var(--dim)'}">
+      <span class="s-ts">${(item.ts||'').slice(-8)}</span>
+      <span class="s-risk" style="color:${rc[item.risk]||'var(--dim)'}">${item.risk||'--'}</span>
+      <span class="s-cmd">${item.cmd||''}</span>
+      <span class="s-dec">${item.decision||''}</span>
+    </div>`).join('');
+}
+
+function updateTicker(){
+  if(!state.status) return;
+  const s=state.status, mode=state.mockMode?' [DEMO MODE]':'';
+  document.getElementById('ticker-text').textContent=
+    `THEIA CORE ONLINE${mode} // OPS: ${s.total_commands||0} // UPTIME: ${s.uptime||'--'} // MEM: ${s.memory_entries||0} kayıt // USERS: ${s.memory_users||0} // GATEKEEPER: AKTİF // SUPERPOSITION STATE: AKTİF // TÜM SİSTEMLER NOMINAL...`;
+}
+
+// ── Agent animation ───────────────────────────────────────────────────────────
+function animateAgent(id){
+  const bar=document.getElementById(`bar-${id}`);
+  const card=document.getElementById(`agent-${id}`);
+  if(!bar||!card) return;
+  card.classList.add('active');
+  let p=0;
+  const iv=setInterval(()=>{
+    p+=8; bar.style.width=Math.min(p,100)+'%';
+    if(p>=100){clearInterval(iv);setTimeout(()=>{bar.style.width='0%';card.classList.remove('active');},600);}
+  },80);
+}
+
+// ── Memory canvas ─────────────────────────────────────────────────────────────
+function drawMemory(){
+  const canvas=document.getElementById('memory-canvas'); if(!canvas) return;
+  const rect=canvas.parentElement.getBoundingClientRect();
+  canvas.width=rect.width||240; canvas.height=rect.height||100;
+  const ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  const n=Math.max((state.memory?.total_users||0)+2,4);
+  if(memNodes.length!==Math.min(n,14)){
+    memNodes=Array.from({length:Math.min(n,14)},()=>({x:Math.random()*canvas.width,y:Math.random()*canvas.height,vx:(Math.random()-.5)*.4,vy:(Math.random()-.5)*.4,r:Math.random()*3+2}));
+  }
+  memNodes.forEach(n=>{
+    n.x+=n.vx; n.y+=n.vy;
+    if(n.x<0||n.x>canvas.width) n.vx*=-1;
+    if(n.y<0||n.y>canvas.height) n.vy*=-1;
+  });
+  ctx.strokeStyle='rgba(0,212,255,0.12)'; ctx.lineWidth=0.5;
+  for(let i=0;i<memNodes.length;i++) for(let j=i+1;j<memNodes.length;j++){
+    const dx=memNodes[i].x-memNodes[j].x,dy=memNodes[i].y-memNodes[j].y;
+    if(Math.sqrt(dx*dx+dy*dy)<75){ctx.beginPath();ctx.moveTo(memNodes[i].x,memNodes[i].y);ctx.lineTo(memNodes[j].x,memNodes[j].y);ctx.stroke();}
+  }
+  memNodes.forEach((n,i)=>{
+    ctx.beginPath(); ctx.arc(n.x,n.y,n.r,0,Math.PI*2);
+    ctx.fillStyle=i===0?'rgba(0,255,238,0.9)':'rgba(0,212,255,0.6)';
+    ctx.shadowColor='#00d4ff'; ctx.shadowBlur=6; ctx.fill(); ctx.shadowBlur=0;
+  });
+}
+setInterval(drawMemory,50);
+
+// ── Lang canvas ───────────────────────────────────────────────────────────────
+function drawLang(){
+  const canvas=document.getElementById('lang-canvas'); if(!canvas) return;
+  canvas.width=canvas.offsetWidth||240; canvas.height=60;
+  const ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  langData.shift(); langData.push(Math.random());
+  const w=canvas.width/langData.length;
+  langData.forEach((v,i)=>{
+    const h=v*canvas.height*0.85;
+    const g=ctx.createLinearGradient(0,canvas.height-h,0,canvas.height);
+    g.addColorStop(0,'rgba(0,255,238,0.75)'); g.addColorStop(1,'rgba(0,102,255,0.08)');
+    ctx.fillStyle=g; ctx.fillRect(i*w,canvas.height-h,w-1,h);
+  });
+}
+setInterval(drawLang,110);
+
+// ── Alerts ────────────────────────────────────────────────────────────────────
+function checkAlerts(){
+  if(!state.gatekeeper?.recent_commands) return;
+  state.gatekeeper.recent_commands.forEach(cmd=>{
+    const id=cmd.ts+cmd.cmd;
+    if(!seenCmds.has(id)&&(cmd.risk==='HIGH'||cmd.risk==='CRITICAL')){
+      seenCmds.add(id);
+      const overlay=document.getElementById('alert-overlay');
+      const el=document.createElement('div');
+      el.className='alert-item'+(cmd.risk==='CRITICAL'?' critical':'');
+      el.textContent=`[${cmd.risk}] ${cmd.cmd.slice(0,40)}`;
+      el.onclick=()=>el.remove();
+      overlay.appendChild(el);
+      setTimeout(()=>el.remove(),8000);
+    }
+  });
+}
+
+// ── Chat ──────────────────────────────────────────────────────────────────────
+function toggleHistory(){
+  document.getElementById('chat-overlay').classList.toggle('active');
+  const btn=document.getElementById('btn-history');
+  btn.textContent=document.getElementById('chat-overlay').classList.contains('active')?'▼ KAPAT':'▲ GEÇMİŞ';
+}
+
+function escHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function appendMsg(who,text){
+  const container=document.getElementById('chat-messages');
+  const el=document.createElement('div');
+  el.className=`chat-msg ${who}`;
+  const ts=new Date().toLocaleTimeString('tr-TR');
+  if(who==='assistant'){
+    el.innerHTML=`<div class="msg-who">[THEIA]</div>${escHtml(text)}<div class="msg-ts">${ts}</div>`;
+  } else {
+    el.innerHTML=`${escHtml(text)}<div class="msg-ts">${ts}</div>`;
+  }
+  container.appendChild(el);
+  container.scrollTop=container.scrollHeight;
+  chatHistory.push({who,text,ts});
+  return el;
+}
+
+async function sendMessage(){
+  const input=document.getElementById('chat-input');
+  const msg=input.value.trim(); if(!msg) return;
+  input.value='';
+  document.getElementById('btn-send').disabled=true;
+
+  // Show in history overlay if open
+  if(!document.getElementById('chat-overlay').classList.contains('active')) toggleHistory();
+  appendMsg('user',msg);
+
+  // Animate gatekeeper
+  animateAgent('gatekeeper');
+  const status=document.getElementById('core-status');
+  status.textContent='Analiz ediliyor...';
+
+  const thinking=appendMsg('assistant','...');
+  thinking.classList.add('thinking');
+
+  try {
+    const res=await fetch(`${API_BASE}/api/chat`,{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({message:msg})
+    });
+    const data=await res.json();
+    thinking.remove();
+    appendMsg('assistant',data.response||'Yanıt alınamadı.');
+    animateAgent('bot');
+  } catch(e){
+    thinking.remove();
+    appendMsg('assistant','API bağlantı hatası.');
+  }
+  status.textContent='Sistem Hazır';
+  document.getElementById('btn-send').disabled=false;
+  input.focus();
+}
+
+async function takeScreenshot(){
+  document.getElementById('core-status').textContent='Ekran analiz ediliyor...';
+  animateAgent('screen');
+  if(!document.getElementById('chat-overlay').classList.contains('active')) toggleHistory();
+  const thinking=appendMsg('assistant','Ekran görüntüsü alınıyor...');
+  thinking.classList.add('thinking');
+  try {
+    const res=await fetch(`${API_BASE}/api/screenshot`,{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({question:'Ekrandaki durumu analiz et. Hata varsa açıkla, öneride bulun.'})
+    });
+    const data=await res.json();
+    thinking.remove();
+    appendMsg('assistant',data.response||'Analiz tamamlandı.');
+  } catch(e){
+    thinking.remove();
+    appendMsg('assistant','Ekran analizi başarısız.');
+  }
+  document.getElementById('core-status').textContent='Sistem Hazır';
+}
+
+// ── Voice ─────────────────────────────────────────────────────────────────────
+let recognition=null, isListening=false;
+(function initVoice(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){ document.getElementById('btn-voice').style.opacity='0.3'; return; }
+  recognition=new SR();
+  recognition.lang='tr-TR'; recognition.continuous=false; recognition.interimResults=true;
+  recognition.onstart=()=>{ isListening=true; document.getElementById('btn-voice').classList.add('listening'); document.getElementById('waveform').classList.add('listening'); document.getElementById('core-status').textContent='Dinleniyor...'; animateAgent('voice'); };
+  recognition.onend=()=>{ isListening=false; document.getElementById('btn-voice').classList.remove('listening'); document.getElementById('waveform').classList.remove('listening'); document.getElementById('core-status').textContent='Sistem Hazır'; };
+  recognition.onresult=(e)=>{ const t=Array.from(e.results).map(r=>r[0].transcript).join(''); document.getElementById('chat-input').value=t; if(e.results[0].isFinal) sendMessage(); };
+})();
+
+document.getElementById('btn-voice').addEventListener('click',()=>{
+  if(!recognition){ alert('Ses tanıma desteklenmiyor. Chrome kullanın.'); return; }
+  isListening ? recognition.stop() : recognition.start();
+});
+
+// ── Event listeners ───────────────────────────────────────────────────────────
+document.getElementById('chat-input').addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();} });
+document.getElementById('btn-send').addEventListener('click',sendMessage);
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+injectMock(); render();
+fetchAll();
+setInterval(fetchAll, POLL_MS);
+</script>
+</body>
+</html>

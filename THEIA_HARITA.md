@@ -288,7 +288,7 @@ Not: `AuditLog` sınıfı JSONL yazmaya hazır ama mevcut dosya eski JSON array 
 | 8 | core/shared.py — ortak regex tanımları | ✅ Tamamlandı |
 | 9 | api.py duplicate import temizliği | ✅ Tamamlandı |
 | 10 | Supabase bulut backup — supabase_sync.py | ✅ Tamamlandı |
-| 11 | api.py `_build_system` → message.py versiyonuyla eşitle | ⏳ Beklemede (B aşaması) |
+| 11 | api.py `_build_system` → message.py versiyonuyla eşitle | ✅ Tamamlandı (core/theia_soul.py) |
 | 12 | Pigeon workspace UI | ⏳ Beklemede |
 | 13 | schedule.py bölünmesi (502 satır → crud + jobs) | ⏳ Büyüyünce |
 | 14 | Wolfstreet → Gmail bağlantısı | ⏳ En son, en karmaşık |

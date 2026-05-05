@@ -15,7 +15,8 @@ import uvicorn
 
 from agents import memory_agent, web_agent
 from agents.web_agent import has_prefix
-from core.config import SYSTEM, SYSTEM_WEB, USER_ID, claude
+from core.config import USER_ID, claude
+from core.theia_soul import build_system as _build_system_soul
 from core.shared import _MEM_SAVE_RE, _MEM_FORGET_RE, _MEM_VIEW_RE
 from handlers.schedule import dt_str, parse_time
 from core.db import db, get_history, save_message
@@ -62,12 +63,7 @@ class DelayRequest(BaseModel):
 
 
 def _build_system(web: bool, vault_context: str = "", web_context: str = "") -> str:
-    base = SYSTEM_WEB if web else SYSTEM
-    if vault_context:
-        base += f"\n\n{vault_context}"
-    if web_context:
-        base += f"\n\n{web_context}"
-    return base
+    return _build_system_soul(web=web, vault_context=vault_context, web_context=web_context)
 
 
 async def _empty() -> str:
